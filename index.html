@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<!-- GitHub Pages version: upload index.html and assets/ together -->
+
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>一男大戰六女美國行｜2026 美國西南旅行計畫</title>
+<meta content="#243447" name="theme-color"/>
+<style>
+  :root{
+    --ink:#3f4441;
+    --muted:#8c918d;
+    --paper:#f5f2ec;
+    --card:#fffdf9;
+    --line:#d8d3ca;
+    --sage:#aab8a5;
+    --sage-deep:#71806f;
+    --beige:#dfd4c3;
+    --sand:#eee6da;
+    --dusty:#c8b7ad;
+    --bluegray:#aebbc0;
+    --accent:#9a7f6f;
+    --shadow:0 10px 28px rgba(73,68,61,.07);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    color:var(--ink);
+    background:
+      linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,.22)),
+      var(--paper);
+    font-family:"Noto Serif TC","Songti TC","STSong","PingFang TC","Microsoft JhengHei",serif;
+    line-height:1.75;
+    letter-spacing:.015em;
+  }
+  a{text-decoration:none;color:inherit}
+  button{font:inherit}
+  .wrap{width:min(1120px,92%);margin:auto}
+
+  .hero{
+    padding:64px 0 78px;
+    color:var(--ink);
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.08)),
+      #d9ded7;
+    border-bottom:1px solid var(--line);
+    position:relative;
+    overflow:hidden;
+  }
+  .hero:before{
+    content:"TRAVEL NOTE";
+    position:absolute;
+    right:4%;
+    top:36px;
+    font-size:clamp(42px,8vw,110px);
+    letter-spacing:.08em;
+    color:rgba(255,255,255,.42);
+    font-family:Georgia,"Times New Roman",serif;
+    font-weight:400;
+  }
+  .hero:after{
+    content:"";
+    position:absolute;
+    right:10%;
+    bottom:-80px;
+    width:300px;height:300px;
+    border-radius:50%;
+    background:rgba(255,255,255,.18);
+  }
+  .kicker{
+    display:inline-block;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--sage-deep);
+    border-bottom:1px solid var(--sage-deep);
+    padding-bottom:4px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  .hero h1{
+    margin:22px 0 14px;
+    font-size:clamp(40px,6.5vw,70px);
+    line-height:1.06;
+    letter-spacing:.01em;
+    font-weight:700;
+  }
+  .hero p{
+    margin:0;
+    max-width:720px;
+    color:#666c68;
+    font-size:16px;
+  }
+  .hero-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:26px;
+  }
+  .btn{
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:10px 16px;
+    cursor:pointer;
+    background:rgba(255,253,249,.9);
+    color:var(--ink);
+    font-weight:600;
+    box-shadow:none;
+    transition:.2s;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  .btn:hover{background:#fff;transform:translateY(-1px)}
+  .btn.ghost{background:transparent}
+
+  .summary{
+    margin-top:-31px;
+    position:relative;
+    z-index:4;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+  }
+  .summary>div{
+    background:rgba(255,253,249,.96);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:18px 20px;
+    box-shadow:var(--shadow);
+  }
+  .summary small{
+    display:block;
+    color:var(--muted);
+    margin-bottom:4px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+    font-size:12px;
+  }
+  .summary strong{font-size:17px;font-weight:600}
+
+  .route{
+    margin:38px 0 18px;
+    display:flex;
+    gap:9px;
+    align-items:center;
+    overflow:auto;
+    padding:4px 1px 10px;
+  }
+  .route a{
+    flex:0 0 auto;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:#fbf8f2;
+    padding:7px 12px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+    font-size:13px;
+    color:#646b66;
+  }
+  .route a:hover{background:#f0ece4}
+  .route .arrow{color:#aaa49c}
+
+  .date-jump-wrap{
+    position:sticky;
+    top:var(--city-toolbar-height, 54px);
+    z-index:29;
+    margin:0 -4% 22px;
+    padding:8px 4%;
+    background:rgba(249,246,240,.96);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .date-jump-title{
+    display:none;
+  }
+  .date-jump{
+    display:flex;
+    gap:8px;
+    overflow:auto;
+    padding:1px 0 3px;
+    scrollbar-width:none;
+  }
+  .date-jump::-webkit-scrollbar{display:none}
+  .date-jump button{
+    flex:0 0 auto;
+    min-width:86px;
+    border:1px solid #d5d0c7;
+    border-radius:999px;
+    padding:7px 11px;
+    cursor:pointer;
+    background:#fffdf9;
+    color:#656a66;
+    font-weight:500;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+    font-size:13px;
+    transition:background .18s ease,color .18s ease,border-color .18s ease;
+  }
+  .date-jump button:hover{
+    background:#e9eee8;
+    border-color:#bdc8bb;
+    color:#4d594e;
+  }
+  .date-jump button.active{
+    background:var(--sage-deep);
+    border-color:var(--sage-deep);
+    color:#fff;
+    font-weight:600;
+  }
+
+  .toolbar{
+    position:sticky;
+    top:0;
+    z-index:30;
+    margin:0 -4%;
+    padding:10px 4%;
+    background:rgba(245,242,236,.94);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .toolbar-inner{display:flex;gap:8px;overflow:auto}
+  .filter{
+    white-space:nowrap;
+    border:1px solid var(--line);
+    background:#fbf8f2;
+    padding:7px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    color:#737973;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+    font-size:13px;
+  }
+  .filter.active{
+    background:var(--sage-deep);
+    border-color:var(--sage-deep);
+    color:#fff;
+    font-weight:600;
+  }
+  .filter{
+    transition:background .2s ease,color .2s ease,border-color .2s ease;
+  }
+
+  .section-title{margin:48px 0 20px}
+  .section-title h2{
+    margin:0;
+    font-size:28px;
+    font-weight:600;
+    letter-spacing:.04em;
+  }
+  .section-title h2:after{
+    content:"";
+    display:block;
+    width:42px;
+    height:1px;
+    background:var(--accent);
+    margin-top:10px;
+  }
+  .section-title p{
+    margin:10px 0 0;
+    color:var(--muted);
+    font-size:14px;
+  }
+
+  .city-block{scroll-margin-top:var(--sticky-nav-total,112px);margin-bottom:46px}
+  .city-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .city-name{display:flex;gap:12px;align-items:center}
+  .city-icon{
+    width:44px;height:44px;
+    display:grid;place-items:center;
+    border:1px solid var(--line);
+    border-radius:50%;
+    background:#faf7f1;
+    font-size:20px;
+  }
+  .city-name h3{
+    margin:0;
+    font-size:24px;
+    font-weight:600;
+  }
+  .city-name span{
+    color:var(--muted);
+    font-size:12px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+
+  .days{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:17px;
+  }
+  .day{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    scroll-margin-top:var(--sticky-nav-total,112px);
+  }
+  .day-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 18px;
+    background:#f4efe6;
+    border-bottom:1px solid var(--line);
+  }
+  .day:nth-child(3n+2) .day-top{background:#eef1ec}
+  .day:nth-child(3n) .day-top{background:#eef1f1}
+  .day-date{display:flex;align-items:center;gap:12px}
+  .date-badge{
+    min-width:69px;
+    text-align:center;
+    background:#fffdf9;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:6px 8px;
+  }
+  .date-badge b{display:block;font-size:16px;line-height:1.1;font-weight:600}
+  .date-badge small{
+    color:var(--muted);
+    font-size:11px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  .day-title b{display:block;font-size:17px;font-weight:600}
+  .day-title small{
+    color:var(--muted);
+    font-size:12px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+
+  .day-body{padding:12px 18px 16px}
+  .item{
+    display:grid;
+    grid-template-columns:100px 1fr;
+    gap:12px;
+    padding:10px 0;
+    border-bottom:1px dashed #ded8cf;
+  }
+  .item:last-child{border-bottom:0}
+  .time{
+    font-size:12px;
+    color:#777d78;
+    padding-top:2px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+    font-weight:600;
+  }
+  .event strong{font-weight:600}
+  .event small{
+    display:block;
+    color:var(--muted);
+    margin-top:2px;
+    font-size:12px;
+  }
+  .tag{
+    display:inline-block;
+    margin-left:5px;
+    padding:2px 7px;
+    border-radius:999px;
+    font-size:10px;
+    vertical-align:2px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  .heart{background:#f1e3e1;color:#886963}
+  .check{background:#e6eee4;color:#5d705b}
+  .optional{background:#eeeae3;color:#787169}
+  .note{background:#e8efeb;color:#607067}
+  .travel{background:#e6ecef;color:#63747d}
+  .important{background:#f2ead4;color:#806e43}
+
+  .special{
+    margin-top:10px;
+    padding:10px 12px;
+    border-left:3px solid #b7a38f;
+    background:#f5eee4;
+    font-size:12px;
+    color:#74695f;
+  }
+
+  .info-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:17px;
+    margin-bottom:60px;
+  }
+  .panel{
+    background:#fffdf9;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    box-shadow:var(--shadow);
+  }
+  .panel h3{margin:0 0 12px;font-size:19px;font-weight:600}
+  .flight{
+    display:flex;
+    justify-content:space-between;
+    gap:15px;
+    padding:12px 0;
+    border-bottom:1px dashed #d9d3ca;
+  }
+  .flight:last-child{border-bottom:0}
+  .flight small{
+    color:var(--muted);
+    display:block;
+    font-size:11px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  .checklist{display:grid;gap:8px}
+  .checklist label{
+    display:flex;
+    gap:9px;
+    align-items:center;
+    padding:10px 12px;
+    background:#f7f3ed;
+    border-radius:9px;
+    font-size:14px;
+  }
+  input[type=checkbox]{width:16px;height:16px;accent-color:var(--sage-deep)}
+
+  footer{
+    background:#6f776f;
+    color:#f6f3ed;
+    padding:24px 0;
+    text-align:center;
+    font-size:12px;
+    letter-spacing:.04em;
+  }
+
+  .hide{display:none!important}
+
+  @media(max-width:820px){
+    .summary{grid-template-columns:1fr 1fr}
+    .days,.info-grid{grid-template-columns:1fr}
+    .hero{padding-top:48px}
+  }
+  @media(max-width:520px){
+    .summary{grid-template-columns:1fr}
+    .hero h1{font-size:42px}
+    .item{grid-template-columns:82px 1fr;gap:8px}
+    .day-body,.day-top{padding-left:14px;padding-right:14px}
+    .date-jump button{min-width:82px}
+  }
+  @media print{
+    .hero-actions,.toolbar,.date-jump-wrap{display:none}
+    body{background:#fff}
+    .hero{background:#fff!important}
+    .summary{margin-top:10px}
+    .day,.panel,.summary>div{box-shadow:none}
+  }
+
+  .map-link{
+    color:inherit;
+    text-decoration:none;
+    border-bottom:1px solid #b9b1a6;
+    transition:color .18s ease,border-color .18s ease;
+  }
+  .map-link::after{
+    content:" ↗";
+    font-size:.72em;
+    color:#9a8d80;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  .map-link:hover{
+    color:var(--sage-deep);
+    border-color:var(--sage-deep);
+  }
+  .source-link{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-top:10px;
+    padding:7px 11px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:#fbf8f2;
+    color:#6b716c;
+    font-size:12px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+
+  .hero-shell{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(260px,370px);
+    gap:20px 28px;
+    align-items:end;
+  }
+  .hero-copy{position:relative;z-index:2}
+  .hero-visual{
+    position:relative;
+    z-index:2;
+    justify-self:end;
+    align-self:end;
+  }
+  .hero-visual img{
+    display:block;
+    width:min(100%,380px);
+    height:auto;
+    filter:drop-shadow(0 14px 26px rgba(90,84,75,.12));
+  }
+  .hero-caption{
+    margin-top:10px;
+    font-size:12px;
+    color:#7c827d;
+    text-align:right;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  .illustration-intro{
+    margin:8px 0 24px;
+    padding:14px 16px;
+    background:#f9f6f0;
+    border:1px solid var(--line);
+    border-radius:14px;
+    color:#70756f;
+    font-size:14px;
+  }
+  .city-visual{
+    margin:0 0 18px;
+    padding:16px 18px;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.18)),
+      #faf7f1;
+    border:1px solid var(--line);
+    border-radius:16px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:170px;
+    overflow:hidden;
+  }
+  .city-visual img{
+    display:block;
+    width:min(100%,440px);
+    height:auto;
+    filter:drop-shadow(0 10px 20px rgba(90,84,75,.08));
+  }
+  .city-visual.compact img{width:min(100%,400px)}
+  .city-visual.wide img{width:min(100%,520px)}
+  .city-visual small{
+    display:block;
+    margin-top:8px;
+    color:#8b8f89;
+    font-size:12px;
+    text-align:center;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  }
+  @media (max-width: 900px){
+    .hero-shell{
+      grid-template-columns:1fr;
+      align-items:start;
+    }
+    .hero-visual{
+      justify-self:center;
+      width:min(100%,340px);
+    }
+    .hero-caption{text-align:center}
+  }
+  @media (max-width: 520px){
+    .illustration-intro{
+      font-size:13px;
+      margin-bottom:18px;
+    }
+    .city-visual{
+      min-height:auto;
+      padding:12px 12px 8px;
+      border-radius:14px;
+    }
+  }
+  @media print{
+    .hero-visual,.city-visual,.illustration-intro{display:none}
+  }
+
+
+  /* ===== Mobile readability upgrade ===== */
+  .toolbar-inner,
+  .date-jump,
+  .route{
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .map-link{
+    text-underline-offset: 2px;
+  }
+
+  .event{
+    line-height: 1.72;
+  }
+
+  .event strong{
+    font-weight: 600;
+    word-break: break-word;
+  }
+
+  .item{
+    align-items: start;
+  }
+
+  @media (max-width: 900px){
+    .wrap{
+      width:min(94%, 1120px);
+    }
+
+    .hero{
+      padding: 42px 0 54px;
+    }
+
+    .hero:before{
+      font-size: clamp(34px, 11vw, 72px);
+      top: 22px;
+      right: 5%;
+    }
+
+    .hero h1{
+      font-size: clamp(34px, 10vw, 48px);
+      line-height: 1.1;
+      margin: 16px 0 10px;
+    }
+
+    .hero p{
+      font-size: 14px;
+      line-height: 1.8;
+      max-width: 100%;
+    }
+
+    .hero-actions{
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .btn{
+      padding: 10px 14px;
+      font-size: 14px;
+      min-height: 42px;
+    }
+
+    .summary{
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: -18px;
+    }
+
+    .summary > div{
+      padding: 14px 14px;
+    }
+
+    .summary strong{
+      font-size: 15px;
+      line-height: 1.45;
+      display: block;
+    }
+
+    .route{
+      margin: 18px 0 10px;
+      padding-bottom: 8px;
+      gap: 7px;
+    }
+
+    .route a{
+      padding: 7px 11px;
+      font-size: 12px;
+    }
+
+    .illustration-intro{
+      font-size: 13px;
+      line-height: 1.75;
+      padding: 12px 14px;
+      margin: 6px 0 16px;
+    }
+
+    .toolbar{
+      padding: 8px 3%;
+      margin: 0 -3%;
+    }
+
+    .toolbar-inner{
+      gap: 7px;
+      padding-bottom: 1px;
+    }
+
+    .filter{
+      font-size: 12px;
+      padding: 7px 11px;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .date-jump-wrap{
+      margin: 0 -3% 16px;
+      padding: 7px 3%;
+    }
+
+    .date-jump{
+      gap: 7px;
+      padding-bottom: 2px;
+    }
+
+    .date-jump button{
+      min-width: 78px;
+      padding: 7px 10px;
+      font-size: 12px;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    .section-title{
+      margin: 28px 0 14px;
+    }
+
+    .section-title h2{
+      font-size: 23px;
+    }
+
+    .section-title p{
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .city-block{
+      margin-bottom: 28px;
+    }
+
+    .city-head{
+      margin-bottom: 12px;
+    }
+
+    .city-name{
+      gap: 10px;
+    }
+
+    .city-icon{
+      width: 38px;
+      height: 38px;
+      font-size: 18px;
+      flex: 0 0 auto;
+    }
+
+    .city-name h3{
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .city-name span{
+      font-size: 11px;
+    }
+
+    .city-visual{
+      padding: 10px 10px 6px;
+      min-height: auto;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+
+    .city-visual img{
+      width: min(100%, 320px);
+    }
+
+    .days{
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .day{
+      border-radius: 12px;
+    }
+
+    .day-top{
+      padding: 12px 14px;
+      align-items: flex-start;
+    }
+
+    .day-date{
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .date-badge{
+      min-width: 64px;
+      padding: 5px 8px;
+      border-radius: 8px;
+    }
+
+    .date-badge b{
+      font-size: 15px;
+    }
+
+    .date-badge small{
+      font-size: 10px;
+    }
+
+    .day-title b{
+      font-size: 16px;
+      line-height: 1.35;
+    }
+
+    .day-title small{
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .day-body{
+      padding: 10px 14px 14px;
+    }
+
+    .item{
+      grid-template-columns: 1fr;
+      gap: 4px;
+      padding: 10px 0;
+    }
+
+    .time{
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      max-width: 100%;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #f2ede4;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #6e756f;
+      margin-bottom: 2px;
+    }
+
+    .event{
+      font-size: 14px;
+      line-height: 1.78;
+    }
+
+    .event small{
+      font-size: 11px;
+      line-height: 1.65;
+      margin-top: 3px;
+    }
+
+    .tag{
+      font-size: 10px;
+      padding: 2px 6px;
+      margin-left: 4px;
+    }
+
+    .special{
+      font-size: 12px;
+      line-height: 1.72;
+      padding: 10px 11px;
+      margin-top: 8px;
+    }
+
+    .info-grid{
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 34px;
+    }
+
+    .panel{
+      padding: 15px 14px;
+      border-radius: 12px;
+    }
+
+    .panel h3{
+      font-size: 17px;
+      margin-bottom: 10px;
+    }
+
+    .flight{
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 0;
+    }
+
+    .flight > div:last-child{
+      text-align: left !important;
+    }
+
+    .checklist{
+      gap: 8px;
+    }
+
+    .checklist label{
+      padding: 10px 11px;
+      font-size: 13px;
+      line-height: 1.65;
+      align-items: flex-start;
+    }
+
+    footer{
+      padding: 18px 0;
+      line-height: 1.65;
+    }
+  }
+
+  @media (max-width: 520px){
+    body{
+      font-size: 15px;
+    }
+
+    .hero-shell{
+      gap: 16px;
+    }
+
+    .hero-visual{
+      width: min(100%, 250px);
+      margin: 0 auto;
+    }
+
+    .hero-visual img{
+      width: 100%;
+    }
+
+    .hero-caption{
+      text-align: center;
+      font-size: 11px;
+      margin-top: 6px;
+    }
+
+    .summary{
+      grid-template-columns: 1fr;
+    }
+
+    .summary > div{
+      padding: 13px 14px;
+    }
+
+    .route .arrow{
+      display: none;
+    }
+
+    .route{
+      gap: 6px;
+    }
+
+    .city-name h3{
+      font-size: 20px;
+    }
+
+    .city-visual img{
+      width: min(100%, 260px);
+    }
+
+    .date-jump button{
+      min-width: 74px;
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<header class="hero">
+<div class="wrap">
+  <div class="hero-shell">
+    <div class="hero-copy">
+      <span class="kicker">🇺🇸 2026 USA ROAD TRIP · 17 DAYS</span>
+      <h1>一男大戰六女<br/>美國行 🔥</h1>
+      <p>洛杉磯 → Anaheim → Las Vegas → Page → Grand Canyon → Phoenix。超鬧超可愛的美國西南自駕作戰計畫！</p>
+      <div class="hero-actions">
+        <a class="btn" href="#itinerary">查看每日行程 ↓</a>
+        <button class="btn ghost" onclick="window.print()">列印／存成 PDF</button>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <img src="assets/illustration_01.png" alt="旅行插畫：飛機、護照、地圖、相機、咖啡與行李箱">
+      <div class="hero-caption">旅遊手帳風小插圖</div>
+    </div>
+  </div>
+</div>
+</header>
+<main class="wrap">
+<section aria-label="旅程摘要" class="summary">
+<div><small>旅行日期</small><strong>09/24 → 10/12</strong></div>
+<div><small>主要路線</small><strong>LA → PHX</strong></div>
+<div><small>交通方式</small><strong>自駕 Road Trip 🚗</strong></div>
+<div><small>回程</small><strong>PHX 10/10 23:25</strong></div>
+</section>
+<nav aria-label="城市快速導覽" class="route">
+<a href="#la">Los Angeles</a><span class="arrow">→</span>
+<a href="#anaheim">Anaheim</a><span class="arrow">→</span>
+<a href="#vegas">Las Vegas</a><span class="arrow">→</span>
+<a href="#page">Page</a><span class="arrow">→</span>
+<a href="#canyon">Grand Canyon</a><span class="arrow">→</span>
+<a href="#phx">Phoenix</a>
+</nav>
+
+<div class="illustration-intro">
+  這版加上了旅遊手帳風插圖，讓頁面更像自己的行前筆記。插圖是裝飾用途，不影響原本的日期跳轉、城市導覽與地點連結。
+</div>
+
+<div class="toolbar">
+<div class="toolbar-inner">
+<button class="filter active" data-filter="all">全部</button>
+<button class="filter" data-filter="la">LA</button>
+<button class="filter" data-filter="anaheim">Anaheim</button>
+<button class="filter" data-filter="vegas">Vegas</button>
+<button class="filter" data-filter="page">Page</button>
+<button class="filter" data-filter="canyon">Grand Canyon</button>
+<button class="filter" data-filter="phx">Phoenix</button>
+</div>
+</div>
+<section aria-label="日期快速跳轉" class="date-jump-wrap">
+<div class="date-jump-title">📅 快速跳到哪一天？</div>
+<div class="date-jump">
+<button type="button" data-day-target="day-09-24">09/24（四）</button>
+<button type="button" data-day-target="day-09-25">09/25（五）</button>
+<button type="button" data-day-target="day-09-26">09/26（六）</button>
+<button type="button" data-day-target="day-09-27">09/27（日）</button>
+<button type="button" data-day-target="day-09-28">09/28（一）</button>
+<button type="button" data-day-target="day-09-29">09/29（二）</button>
+<button type="button" data-day-target="day-09-30">09/30（三）</button>
+<button type="button" data-day-target="day-10-01">10/01（四）</button>
+<button type="button" data-day-target="day-10-02">10/02（五）</button>
+<button type="button" data-day-target="day-10-03">10/03（六）</button>
+<button type="button" data-day-target="day-10-04">10/04（日）</button>
+<button type="button" data-day-target="day-10-05">10/05（一）</button>
+<button type="button" data-day-target="day-10-06">10/06（二）</button>
+<button type="button" data-day-target="day-10-07">10/07（三）</button>
+<button type="button" data-day-target="day-10-08">10/08（四）</button>
+<button type="button" data-day-target="day-10-09">10/09（五）</button>
+<button type="button" data-day-target="day-10-10">10/10（六）</button>
+</div>
+</section>
+<div class="section-title" id="itinerary">
+<h2>每日行程</h2>
+<p>💘、✅ 等符號保留自原始行程；「可吃可不吃／視情況」也完整保留。</p>
+</div>
+<section class="city-block" data-city="la" id="la">
+<div class="city-head">
+<div class="city-name"><div class="city-icon">🌴</div><div><h3>Los Angeles</h3><span>09/24 - 09/28</span></div></div>
+</div>
+<div class="city-visual wide"><img src="assets/illustration_02.png" alt="洛杉磯插圖：海灘、棕櫚樹、好萊塢山丘與天文台"></div>
+<div class="days">
+<article class="day" id="day-09-24">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>09/24</b><small>星期四</small></div><div class="day-title"><b>抵達 LA</b><small>入境、取車</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">09/25 00:10</div><div class="event"><strong>TPE 飛機起飛 🛫</strong></div></div>
+<div class="item"><div class="time">09/24 21:10</div><div class="event"><strong>LAX 抵達</strong></div></div>
+<div class="item"><div class="time">21:10-22:30</div><div class="event"><strong>入境</strong></div></div>
+<div class="item"><div class="time">23:00</div><div class="event"><strong>取車出發</strong></div></div>
+<div class="special">汽座 TBC</div>
+</div></article>
+<article class="day" id="day-09-25">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>09/25</b><small>星期五</small></div><div class="day-title"><b>Hollywood & Griffith</b><small>餐廳、逛街、經典景點</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">09:00</div><div class="event"><strong>出發</strong></div></div>
+<div class="item"><div class="time">10:00-12:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/R%C3%A9publique+Los+Angeles" target="_blank" rel="noopener noreferrer">République</a><span class="tag heart">💘</span></strong></div></div>
+<div class="item"><div class="time">12:00-13:00</div><div class="event"><strong>Target</strong></div></div>
+<div class="item"><div class="time">13:00-13:45</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/JapanLA" target="_blank" rel="noopener noreferrer">JapanLA</a></strong></div></div>
+<div class="item"><div class="time">14:00-15:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Hollywood+Walk+of+Fame" target="_blank" rel="noopener noreferrer">星光大道</a></strong></div></div>
+<div class="item"><div class="time">15:15-16:15</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/u2ce8MeLqCWGmoVC6" target="_blank" rel="noopener noreferrer">Porto's Bakery</a></strong></div></div>
+<div class="item"><div class="time">16:40-17:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Hollywood+Sign" target="_blank" rel="noopener noreferrer">好萊塢標誌</a></strong></div></div>
+<div class="item"><div class="time">17:30-19:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Griffith+Observatory" target="_blank" rel="noopener noreferrer">格里斐斯天文台</a></strong></div></div>
+<div class="item"><div class="time">20:00-21:30</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/x2u8bJiHyQjEDi4JA" target="_blank" rel="noopener noreferrer">Manpuku</a><span class="tag heart">💘</span><span class="tag check">✅</span></strong></div></div>
+</div></article>
+<article class="day" id="day-09-26">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>09/26</b><small>星期六</small></div><div class="day-title"><b>West LA & Beach</b><small>Getty、UCLA、海灘</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">09:00</div><div class="event"><strong>出發</strong></div></div>
+<div class="item"><div class="time">10:00-11:30</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/SEBaSJYYhsFGU8T97?g_st=ic" target="_blank" rel="noopener noreferrer">Great White</a> / <a class="map-link" href="https://maps.app.goo.gl/8RhuJzxRRctDxADM9?g_st=ic" target="_blank" rel="noopener noreferrer">La La Land</a><span class="tag optional">可家吃</span></strong></div></div>
+<div class="item"><div class="time">12:30-14:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Getty+Center" target="_blank" rel="noopener noreferrer">Getty Center</a><span class="tag check">✅</span></strong></div></div>
+<div class="item"><div class="time">14:40-16:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/UCLA" target="_blank" rel="noopener noreferrer">UCLA</a> + store</strong></div></div>
+<div class="item"><div class="time">16:20-17:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Venice+Beach" target="_blank" rel="noopener noreferrer">威尼斯海灘</a></strong></div></div>
+<div class="item"><div class="time">17:30-18:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Santa+Monica" target="_blank" rel="noopener noreferrer">Santa Monica</a></strong></div></div>
+<div class="item"><div class="time">18:30-20:00</div><div class="event"><strong>Target / Walmart / Trader Joe's</strong></div></div>
+<div class="item"><div class="time">20:00-</div><div class="event"><strong>買東西回家煮</strong></div></div>
+<div class="special">視當天情況看要餐廳吃還家吃：<a class="map-link" href="https://www.google.com/maps/search/Blue+Plate+Taco" target="_blank" rel="noopener noreferrer">Blue Plate Taco</a><span class="tag check">✅</span>（18:00）</div>
+</div></article>
+<article class="day" id="day-09-27">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>09/27</b><small>星期日</small></div><div class="day-title"><b>Downtown LA</b><small>道奇、The Broad、音樂廳</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">10:00</div><div class="event"><strong>出門</strong></div></div>
+<div class="item"><div class="time">10:30-12:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Dodger+Stadium" target="_blank" rel="noopener noreferrer">道奇球場</a> / 商店</strong></div></div>
+<div class="item"><div class="time">12:30-14:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Eggslut+Grand+Central+Market" target="_blank" rel="noopener noreferrer">Eggslut</a><span class="tag heart">💘</span></strong></div></div>
+<div class="item"><div class="time">14:00-15:00</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/HvVjdTET1a4qs3uDA" target="_blank" rel="noopener noreferrer">Grand Central Market</a></strong></div></div>
+<div class="item"><div class="time">15:00-15:30</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/j9NH3efXKNjqDXNu6" target="_blank" rel="noopener noreferrer">天使鐵路</a></strong></div></div>
+<div class="item"><div class="time">15:45-17:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/The+Broad" target="_blank" rel="noopener noreferrer">The Broad</a><span class="tag check">✅</span></strong></div></div>
+<div class="item"><div class="time">17:00-18:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Walt+Disney+Concert+Hall" target="_blank" rel="noopener noreferrer">迪士尼音樂廳</a></strong></div></div>
+<div class="item"><div class="time">18:00-18:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Grand+Park+Los+Angeles" target="_blank" rel="noopener noreferrer">Grand Park</a></strong></div></div>
+<div class="item"><div class="time">19:00-21:00</div><div class="event"><strong>表弟吃飯？where</strong></div></div>
+</div></article>
+<article class="day" id="day-09-28">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>09/28</b><small>星期一</small></div><div class="day-title"><b>LA → Anaheim</b><small>The Grove、Beverly Hills、移動</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">09:00-09:30</div><div class="event"><strong>拿行李到舅舅店裡</strong></div></div>
+<div class="item"><div class="time">10:00-11:00</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/VrT5wHKaGPqWVD5k6" target="_blank" rel="noopener noreferrer">Layla Bagels</a><span class="tag heart">💘</span></strong></div></div>
+<div class="item"><div class="time">11:15-13:30</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/gVJgFsvZsdaJ74qf9" target="_blank" rel="noopener noreferrer">The Grove</a> + <a class="map-link" href="https://www.google.com/maps/search/Original+Farmers+Market" target="_blank" rel="noopener noreferrer">農夫市場</a></strong></div></div>
+<div class="item"><div class="time">13:30-14:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Urban+Light" target="_blank" rel="noopener noreferrer">Urban Light</a></strong></div></div>
+<div class="item"><div class="time">14:40-15:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Paul+Smith+Pink+Wall" target="_blank" rel="noopener noreferrer">粉紅牆</a></strong></div></div>
+<div class="item"><div class="time">15:15-16:15</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Beverly+Hills" target="_blank" rel="noopener noreferrer">比佛利</a> / <a class="map-link" href="https://www.google.com/maps/search/Rodeo+Drive" target="_blank" rel="noopener noreferrer">Rodeo Dr</a></strong></div></div>
+<div class="item"><div class="time">16:45-17:00</div><div class="event"><strong>店裡拿行李</strong></div></div>
+<div class="item"><div class="time">17:00-18:00</div><div class="event"><strong>開車去 Anaheim<span class="tag travel">移動</span></strong></div></div>
+<div class="item"><div class="time">18:00-</div><div class="event"><strong>check in 買東西回來吃 + 明天早餐（有微波爐）</strong></div></div>
+</div></article>
+</div>
+</section>
+<section class="city-block" data-city="anaheim" id="anaheim">
+<div class="city-head"><div class="city-name"><div class="city-icon">🏰</div><div><h3>Anaheim</h3><span>09/29 - 09/30</span></div></div></div>
+<div class="city-visual compact"><img src="assets/illustration_03.png" alt="Anaheim 插圖：夢幻樂園城堡、摩天輪、零食與票券"></div>
+<div class="days">
+<article class="day" id="day-09-29">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>09/29</b><small>星期二</small></div><div class="day-title"><b>Disneyland Day</b><small>在家吃早餐、整天樂園</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">早餐</div><div class="event"><strong>在家吃早餐</strong></div></div>
+<div class="item"><div class="time">全天</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Disneyland+Park" target="_blank" rel="noopener noreferrer">Disneyland</a></strong></div></div>
+</div></article>
+<article class="day" id="day-09-30">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>09/30</b><small>星期三</small></div><div class="day-title"><b>Anaheim → Vegas</b><small>公路旅行日</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">10:00-11:30</div><div class="event"><strong>退房前往 <a class="map-link" href="https://maps.app.goo.gl/XCwgQjcoCXG9WXeZ9" target="_blank" rel="noopener noreferrer">IHOP</a><span class="tag optional">可吃可不吃</span></strong></div></div>
+<div class="item"><div class="time">13:30-15:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Peggy+Sue&#x27;s+50&#x27;s+Diner" target="_blank" rel="noopener noreferrer">Peggy Sue's 50's Diner</a><span class="tag optional">可吃或吃別的</span></strong></div></div>
+<div class="item"><div class="time">17:00-17:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Seven+Magic+Mountains" target="_blank" rel="noopener noreferrer">Seven Magic Mountains</a></strong></div></div>
+<div class="item"><div class="time">18:00-18:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Welcome+to+Fabulous+Las+Vegas+Sign" target="_blank" rel="noopener noreferrer">Vegas Sign</a></strong></div></div>
+<div class="item"><div class="time">18:40-19:30</div><div class="event"><strong>check in 休息</strong></div></div>
+<div class="item"><div class="time">19:30-</div><div class="event"><strong>出門附近閒晃買吃的（有微波爐）</strong></div></div>
+</div></article>
+</div>
+</section>
+<section class="city-block" data-city="vegas" id="vegas">
+<div class="city-head"><div class="city-name"><div class="city-icon">🎰</div><div><h3>Las Vegas</h3><span>10/01 - 10/02</span></div></div></div>
+<div class="city-visual compact"><img src="assets/illustration_04.png" alt="Las Vegas 插圖：霓虹招牌、骰子、雞尾酒與沙漠公路"></div>
+<div class="days">
+<article class="day" id="day-10-01">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/01</b><small>星期四</small></div><div class="day-title"><b>Vegas</b><small>City walk、飯店、晚餐</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">11:15-13:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Chipotle+Las+Vegas" target="_blank" rel="noopener noreferrer">Chipotle</a></strong></div></div>
+<div class="item"><div class="time">13:00-16:00</div><div class="event"><strong>city walk（<a class="map-link" href="https://maps.app.goo.gl/xNnCeCoca6K9Kj5k7" target="_blank" rel="noopener noreferrer">Kitty Cafe</a> + <a class="map-link" href="https://maps.app.goo.gl/uiaAbjuc7aQnGMVX8" target="_blank" rel="noopener noreferrer">ABC Store</a>）</strong></div></div>
+<div class="item"><div class="time">16:00-18:00</div><div class="event"><strong>飯店游泳或其他</strong></div></div>
+<div class="item"><div class="time">18:15-19:45</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Gordon+Ramsay+Hell&#x27;s+Kitchen+Las+Vegas" target="_blank" rel="noopener noreferrer">Gordon Ramsay Hell's Kitchen</a><span class="tag heart">💘</span><span class="tag check">✅</span></strong></div></div>
+<div class="item"><div class="time">19:45-</div><div class="event"><strong>閒晃 + 賭博</strong></div></div>
+</div></article>
+<article class="day" id="day-10-02">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/02</b><small>星期五</small></div><div class="day-title"><b>Vegas → Page</b><small>機場送機、長途移動</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">10:00-11:00</div><div class="event"><strong>退房外帶 <a class="map-link" href="https://maps.app.goo.gl/apuKe6GPS9HWpAtaA" target="_blank" rel="noopener noreferrer">Einstein Bros. Bagels</a><span class="tag heart">💘</span> + 送陳晴去機場</strong></div></div>
+<div class="item"><div class="time">13:00-14:00</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/rAGNZBbbQT7GySVT9?g_st=ic" target="_blank" rel="noopener noreferrer">In-N-Out</a><span class="tag heart">💘</span></strong></div></div>
+<div class="item"><div class="time">16:30-18:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Horseshoe+Bend" target="_blank" rel="noopener noreferrer">Horseshoe Bend</a></strong></div></div>
+<div class="item"><div class="time">18:45-19:30</div><div class="event"><strong>check in</strong></div></div>
+<div class="item"><div class="time">19:30-</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Big+John&#x27;s+Texas+BBQ" target="_blank" rel="noopener noreferrer">Big John's Texas BBQ</a><span class="tag optional">可吃可不吃</span></strong></div></div>
+<div class="special">陳晴回 Phx</div>
+</div></article>
+</div>
+</section>
+<section class="city-block" data-city="page" id="page">
+<div class="city-head"><div class="city-name"><div class="city-icon">🏜️</div><div><h3>Page</h3><span>10/02 - 10/03</span></div></div></div>
+<div class="city-visual wide"><img src="assets/illustration_05.png" alt="Page 與大峽谷插圖：峽谷河灣與沙漠景觀"></div>
+<div class="days">
+<article class="day" id="day-10-03">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/03</b><small>星期六</small></div><div class="day-title"><b>Page → Canyon</b><small>羚羊谷、Lake Powell、東入口</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">07:30-08:30</div><div class="event"><strong>起床吃飯店早餐</strong></div></div>
+<div class="item"><div class="time">09:00-10:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Antelope+Canyon" target="_blank" rel="noopener noreferrer">羚羊谷</a></strong></div></div>
+<div class="item"><div class="time">10:00-11:00</div><div class="event"><strong>拿行李退房</strong></div></div>
+<div class="item"><div class="time">11:15-12:45</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/BirdHouse+Page+AZ" target="_blank" rel="noopener noreferrer">BirdHouse</a><span class="tag optional">可吃可不吃</span></strong></div></div>
+<div class="item"><div class="time">13:00-14:30</div><div class="event"><strong><a class="map-link" href="https://maps.app.goo.gl/UfyBkiAzj3eTKQui7?g_st=ic" target="_blank" rel="noopener noreferrer">大壩</a> + <a class="map-link" href="https://maps.app.goo.gl/W3fvT1XZ8PxVzma96?g_st=ic" target="_blank" rel="noopener noreferrer">Powell Lake</a></strong></div></div>
+<div class="item"><div class="time">16:00-16:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Cameron+Trading+Post" target="_blank" rel="noopener noreferrer">Cameron Trading Post</a></strong><small>Frybread</small></div></div>
+<div class="item"><div class="time">17:10-18:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Lipan+Point" target="_blank" rel="noopener noreferrer">Lipan Point</a> / <a class="map-link" href="https://www.google.com/maps/search/Desert+View+Watchtower" target="_blank" rel="noopener noreferrer">Desert View Point</a></strong></div></div>
+<div class="item"><div class="time">19:00-</div><div class="event"><strong>deli 吃飯 + check in</strong></div></div>
+<div class="special">陳晴 Phx 出發</div>
+</div></article>
+</div>
+</section>
+<section class="city-block" data-city="canyon" id="canyon">
+<div class="city-head"><div class="city-name"><div class="city-icon">🌄</div><div><h3>Grand Canyon</h3><span>10/03 - 10/05</span></div></div></div>
+<div class="city-visual wide"><img src="assets/illustration_06.png" alt="Grand Canyon 插圖：河灣、峽谷斷崖與夕陽"></div>
+<div class="days">
+<article class="day" id="day-10-04">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/04</b><small>星期日</small></div><div class="day-title"><b>Grand Canyon 全日</b><small>日出、South Rim、星空</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">05:30-07:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Yavapai+Point" target="_blank" rel="noopener noreferrer">Yavapai Point</a> 看日出<span class="tag optional">自由參加</span></strong></div></div>
+<div class="item"><div class="time">07:00-10:00</div><div class="event"><strong>吃早餐 + 補眠</strong></div></div>
+<div class="item"><div class="time">10:00-11:30</div><div class="event"><strong>Hualapai 探險</strong></div></div>
+<div class="item"><div class="time">11:30-12:30</div><div class="event"><strong>Grand Canyon South</strong></div></div>
+<div class="item"><div class="time">12:30-14:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/El+Tovar+Dining+Room" target="_blank" rel="noopener noreferrer">El Tovar Dining Room</a><span class="tag heart">💘</span><span class="tag check">✅</span></strong></div></div>
+<div class="item"><div class="time">14:00-14:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Bright+Angel+Trailhead" target="_blank" rel="noopener noreferrer">Bright Angel</a></strong></div></div>
+<div class="item"><div class="time">14:30-16:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Hopi+Point" target="_blank" rel="noopener noreferrer">Hopi Point</a> / <a class="map-link" href="https://www.google.com/maps/search/Mohave+Point" target="_blank" rel="noopener noreferrer">Mohave Point</a> / <a class="map-link" href="https://www.google.com/maps/search/Pima+Point" target="_blank" rel="noopener noreferrer">Pima Point</a></strong></div></div>
+<div class="item"><div class="time">16:30-18:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Mather+Point" target="_blank" rel="noopener noreferrer">Mather Point</a> / <a class="map-link" href="https://www.google.com/maps/search/Yaki+Point" target="_blank" rel="noopener noreferrer">Yaki Point</a></strong></div></div>
+<div class="item"><div class="time">18:30-</div><div class="event"><strong>deli / 超市買 / 吃泡麵</strong></div></div>
+<div class="item"><div class="time">22:00-23:00</div><div class="event"><strong>某處看星星</strong></div></div>
+</div></article>
+<article class="day" id="day-10-05">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/05</b><small>星期一</small></div><div class="day-title"><b>Grand Canyon → Phx</b><small>Sedona 中停</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">11:00</div><div class="event"><strong>退房</strong></div></div>
+<div class="item"><div class="time">13:30-15:00</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Turquoise+McDonald&#x27;s+Sedona" target="_blank" rel="noopener noreferrer">藍色麥當勞</a><span class="tag heart">💘</span></strong></div></div>
+<div class="item"><div class="time">15:10-16:30</div><div class="event"><strong>Sedona / <a class="map-link" href="https://www.google.com/maps/search/Chapel+of+the+Holy+Cross+Sedona" target="_blank" rel="noopener noreferrer">Chapel of the Holy Cross</a> / <a class="map-link" href="https://www.google.com/maps/search/Snoopy+Rock+Sedona" target="_blank" rel="noopener noreferrer">Snoopy Rock</a></strong></div></div>
+<div class="item"><div class="time">18:00-19:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Rock+Springs+Caf%C3%A9" target="_blank" rel="noopener noreferrer">Rock Springs Café</a><span class="tag heart">💘</span></strong></div></div>
+<div class="item"><div class="time">20:30</div><div class="event"><strong>到陳晴家</strong></div></div>
+</div></article>
+</div>
+</section>
+<section class="city-block" data-city="phx" id="phx">
+<div class="city-head"><div class="city-name"><div class="city-icon">🌵</div><div><h3>Phoenix</h3><span>10/05 - 10/10</span></div></div></div>
+<div class="city-visual compact"><img src="assets/illustration_07.png" alt="Phoenix 與 Sedona 插圖：仙人掌、紅岩、咖啡與購物袋"></div>
+<div class="days">
+<article class="day" id="day-10-06">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/06</b><small>星期二</small></div><div class="day-title"><b>Phx</b><small>休息日、Papago Park 夕陽</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">上午</div><div class="event"><strong>耍廢休息</strong></div></div>
+<div class="item"><div class="time">16:30-18:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Hole+in+the+Rock+Phoenix" target="_blank" rel="noopener noreferrer">Hole in the Rock</a> / <a class="map-link" href="https://www.google.com/maps/search/Papago+Park" target="_blank" rel="noopener noreferrer">Papago Park</a> 看夕陽</strong></div></div>
+</div></article>
+<article class="day" id="day-10-07">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/07</b><small>星期三</small></div><div class="day-title"><b>Phx</b><small>Outlets 血拼日</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">早餐</div><div class="event"><strong>在家吃早餐</strong></div></div>
+<div class="item"><div class="time">全天</div><div class="event"><strong>Outlets 血拼</strong></div></div>
+</div></article>
+<article class="day" id="day-10-08">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/08</b><small>星期四</small></div><div class="day-title"><b>Phx</b><small>Brunch & 採買</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">11:00-12:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Sophia&#x27;s+A+Brunch+Counter" target="_blank" rel="noopener noreferrer">Sophia's A Brunch Counter</a><span class="tag heart">💘</span></strong></div></div>
+<div class="item"><div class="time">午後</div><div class="event"><strong>缺德舅 / 窩罵 / 目標 / Costco / Sephora 採買</strong></div></div>
+<div class="special">晚餐可吃 <a class="map-link" href="https://www.google.com/maps/search/Pizzeria+Bianco" target="_blank" rel="noopener noreferrer">Pizzeria Bianco</a><span class="tag heart">💘</span><span class="tag check">✅</span>（18:00）5 位</div>
+</div></article>
+<article class="day" id="day-10-09">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/09</b><small>星期五</small></div><div class="day-title"><b>Phx</b><small>Zoo / 水族館？</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">白天</div><div class="event"><strong>Zoo / 水族館？</strong></div></div>
+<div class="item"><div class="time">17:30-19:30</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Top+of+the+Rock+Restaurant+Tempe" target="_blank" rel="noopener noreferrer">Top of the Rock Restaurant</a> <span class="tag important">還沒訂位</span></strong></div></div>
+</div></article>
+<article class="day" id="day-10-10">
+<div class="day-top"><div class="day-date"><div class="date-badge"><b>10/10</b><small>星期六</small></div><div class="day-title"><b>Phx → TPE</b><small>最後採買、還車、搭機回台</small></div></div></div>
+<div class="day-body">
+<div class="item"><div class="time">白天</div><div class="event"><strong><a class="map-link" href="https://www.google.com/maps/search/Old+Town+Scottsdale" target="_blank" rel="noopener noreferrer">Old Town Scottsdale</a></strong></div></div>
+<div class="item"><div class="time">白天</div><div class="event"><strong>最後採買</strong></div></div>
+<div class="item"><div class="time">19:30</div><div class="event"><strong>從家裡出發還車</strong></div></div>
+<div class="item"><div class="time">20:00-20:30</div><div class="event"><strong>還車</strong></div></div>
+<div class="item"><div class="time">21:00</div><div class="event"><strong>到機場</strong></div></div>
+<div class="item"><div class="time">23:25</div><div class="event"><strong>PHX 飛機起飛 🛫</strong></div></div>
+<div class="item"><div class="time">10/12 04:55</div><div class="event"><strong>TPE 抵達</strong></div></div>
+<div class="item"><div class="time">04:55-05:55</div><div class="event"><strong>入境～上班去 🫢</strong></div></div>
+</div></article>
+</div>
+</section>
+<div class="section-title"><h2>重要資訊</h2><p>出發與回程，以及原始文件最後特別留下的提醒。</p></div>
+<section class="info-grid">
+<div class="panel">
+<h3>✈️ 航班</h3>
+<div class="flight">
+<div><strong>台北 → 洛杉磯</strong><small>TPE → LAX</small></div>
+<div style="text-align:right"><strong>09/25 00:10</strong><small>LAX 09/24 21:10 抵達</small></div>
+</div>
+<div class="flight">
+<div><strong>Phoenix → 台北</strong><small>PHX → TPE</small></div>
+<div style="text-align:right"><strong>10/10 23:25</strong><small>TPE 10/12 04:55 抵達</small></div>
+</div>
+<div class="special">10/12 04:55-05:55 入境～上班去 🫢</div><a class="source-link" href="https://app.notion.com/p/3d064eefadd3808f8169d314a3807d56?pvs=21" rel="noopener noreferrer" target="_blank">原始 Notion ↗</a>
+</div>
+<div class="panel">
+<h3>📝 出發前提醒</h3>
+<div class="checklist">
+<label><input data-save="iphone" type="checkbox"/> 我要買哀鳳 📱</label>
+<label><input data-save="canyoncard" type="checkbox"/> 要帶大峽谷卡</label>
+<label><input data-save="carseat" type="checkbox"/> 確認汽座</label>
+<label><input data-save="toprock" type="checkbox"/> Top of the Rock 訂位確認</label>
+</div>
+</div>
+</section>
+</main>
+<footer>
+<div class="wrap">一男大戰六女美國行 🔥 · 行程內容依提供文件整理</div>
+</footer>
+<script>
+  // ===== 城市導覽 =====
+  const cityButtons = [...document.querySelectorAll('.filter')];
+  const cityBlocks = [...document.querySelectorAll('.city-block')];
+  const cityScroller = document.querySelector('.toolbar-inner');
+  const toolbar = document.querySelector('.toolbar');
+  const itineraryTitle = document.querySelector('#itinerary');
+
+  // ===== 日期導覽 =====
+  const dateButtons = [...document.querySelectorAll('.date-jump button[data-day-target]')];
+  const dayCards = [...document.querySelectorAll('.day[id^="day-"]')];
+  const dateScroller = document.querySelector('.date-jump');
+  const dateBar = document.querySelector('.date-jump-wrap');
+
+  function updateStickyOffsets() {
+    const h = toolbar ? toolbar.offsetHeight : 54;
+    document.documentElement.style.setProperty('--city-toolbar-height', h + 'px');
+
+    // 點擊跳轉時，讓卡片停在兩層 sticky 導覽下方。
+    const dateH = dateBar ? dateBar.offsetHeight : 46;
+    document.documentElement.style.setProperty('--sticky-nav-total', (h + dateH + 12) + 'px');
+  }
+
+  function centerButton(scroller, button) {
+    if (!scroller || !button) return;
+    const left = button.offsetLeft - scroller.clientWidth / 2 + button.offsetWidth / 2;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  }
+
+  function setActiveCity(city) {
+    cityButtons.forEach(btn => {
+      const active = btn.dataset.filter === city;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-current', active ? 'location' : 'false');
+    });
+    centerButton(cityScroller, cityButtons.find(btn => btn.dataset.filter === city));
+  }
+
+  function setActiveDate(dayId) {
+    dateButtons.forEach(btn => {
+      const active = btn.dataset.dayTarget === dayId;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-current', active ? 'date' : 'false');
+    });
+    centerButton(dateScroller, dateButtons.find(btn => btn.dataset.dayTarget === dayId));
+  }
+
+  // 點城市：直接跳到該城市
+  cityButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const city = btn.dataset.filter;
+      if (city === 'all') {
+        itineraryTitle.scrollIntoView({ behavior:'smooth', block:'start' });
+        setActiveCity('all');
+        return;
+      }
+      const target = document.querySelector(`.city-block[data-city="${city}"]`);
+      if (target) {
+        target.scrollIntoView({ behavior:'smooth', block:'start' });
+        setActiveCity(city);
+      }
+    });
+  });
+
+  // 點日期：直接跳到當天
+  dateButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.dayTarget);
+      if (target) {
+        target.scrollIntoView({ behavior:'smooth', block:'start' });
+        setActiveDate(target.id);
+      }
+    });
+  });
+
+  let ticking = false;
+
+  function updateScrollSpy() {
+    const toolbarBottom = toolbar ? toolbar.getBoundingClientRect().bottom : 0;
+    const dateBottom = dateBar ? dateBar.getBoundingClientRect().bottom : toolbarBottom;
+    const probeY = dateBottom + Math.min(window.innerHeight * 0.18, 150);
+
+    // 城市
+    let currentCity = 'all';
+    for (const block of cityBlocks) {
+      const rect = block.getBoundingClientRect();
+      if (rect.top <= probeY && rect.bottom > probeY) {
+        currentCity = block.dataset.city;
+        break;
+      }
+    }
+    if (currentCity === 'all') {
+      const passed = cityBlocks.filter(block => block.getBoundingClientRect().top <= probeY);
+      if (passed.length) currentCity = passed[passed.length - 1].dataset.city;
+    }
+    if (itineraryTitle && itineraryTitle.getBoundingClientRect().top > probeY) {
+      currentCity = 'all';
+    }
+
+    const currentCityBtn = cityButtons.find(btn => btn.classList.contains('active'))?.dataset.filter;
+    if (currentCityBtn !== currentCity) setActiveCity(currentCity);
+
+    // 日期
+    let currentDay = null;
+    for (const card of dayCards) {
+      const rect = card.getBoundingClientRect();
+      if (rect.top <= probeY && rect.bottom > probeY) {
+        currentDay = card.id;
+        break;
+      }
+    }
+    if (!currentDay) {
+      const passedDays = dayCards.filter(card => card.getBoundingClientRect().top <= probeY);
+      if (passedDays.length) currentDay = passedDays[passedDays.length - 1].id;
+    }
+
+    // 尚未進入每日行程時，不標日期
+    if (itineraryTitle && itineraryTitle.getBoundingClientRect().top > probeY) {
+      currentDay = null;
+    }
+
+    const activeDay = dateButtons.find(btn => btn.classList.contains('active'))?.dataset.dayTarget || null;
+    if (currentDay && activeDay !== currentDay) {
+      setActiveDate(currentDay);
+    } else if (!currentDay && activeDay) {
+      dateButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-current', 'false');
+      });
+    }
+
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(updateScrollSpy);
+      ticking = true;
+    }
+  }, { passive:true });
+
+  window.addEventListener('resize', () => {
+    updateStickyOffsets();
+    updateScrollSpy();
+  });
+
+  updateStickyOffsets();
+  updateScrollSpy();
+
+  // Checklist：保留瀏覽器記憶
+  document.querySelectorAll('input[data-save]').forEach(box => {
+    const key = 'usaTrip_' + box.dataset.save;
+    box.checked = localStorage.getItem(key) === '1';
+    box.addEventListener('change', () => {
+      localStorage.setItem(key, box.checked ? '1' : '0');
+    });
+  });
+</script>
+</body>
+</html>
