@@ -246,6 +246,14 @@
   .member-name{font-weight:700;font-size:14.5px;flex:1;word-break:break-word;}
   .member-meta{font-size:11.5px;color:var(--ink-soft);white-space:nowrap;}
   .member-count-banner{font-size:13px;color:var(--ink-soft);margin-bottom:10px;}
+  .clear-nick-btn{width:100%;margin-top:14px;padding:11px;border-radius:14px;border:2px solid var(--outline);background:var(--paper2);color:var(--ink-soft);font-weight:700;font-size:13.5px;}
+  .recap-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .recap-stat{background:var(--paper);border:3px solid var(--outline);border-radius:16px;padding:14px 12px;text-align:center;box-shadow:3px 3px 0 var(--shadow);}
+  .recap-stat .rnum{font-family:'Baloo 2';font-size:26px;font-weight:800;color:var(--mustard);}
+  .recap-stat .rlabel{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .recap-board-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);}
+  .recap-board-row:last-child{border-bottom:none;}
+  .recap-rank{font-family:'Baloo 2';font-weight:800;color:var(--ink-soft);width:20px;}
 
   /* region illustrations */
   .stamp svg{width:34px;height:34px;}
@@ -356,6 +364,7 @@
     <div class="view" id="view-guide">
       <div class="section-title">📖 使用說明</div>
       <div class="info-card"><div id="guideList"></div></div>
+      <button class="clear-nick-btn" id="clearNickBtn1">🔄 清除我的暱稱</button>
     </div>
 
     <div class="view" id="view-trip">
@@ -403,6 +412,11 @@
       <div class="section-title" style="font-size:16px;">支出紀錄</div>
       <div id="expenseList"></div>
     </div>
+
+    <div class="view" id="view-recap">
+      <div class="section-title">🎬 旅行回顧</div>
+      <div id="recapContent"></div>
+    </div>
   </div>
 
   <div id="settleModal" class="modal-overlay">
@@ -426,6 +440,7 @@
       <button class="tab-btn" data-view="view-checklist"><span class="ic">✅</span>清單</button>
       <button class="tab-btn" data-view="view-members"><span class="ic">👥</span>團員</button>
       <button class="tab-btn" data-view="view-money"><span class="ic">💰</span>分帳</button>
+      <button class="tab-btn" data-view="view-recap"><span class="ic">🎬</span>回顧</button>
     </div>
   </div>
 
@@ -815,6 +830,7 @@ async function refreshShared(){
   renderChecklist();
   renderMembers();
   renderMoney();
+  renderRecap();
 }
 
 let NICK = null;
@@ -1371,6 +1387,13 @@ function renderGuide(){
     </div>`).join('');
 }
 
+function clearNickname(){
+  if(confirm('確定要清除暱稱嗎？會回到輸入名字畫面，但不會刪除你在團員名單裡的資料，除非你自己在團員頁刪除。')){
+    localStorage.removeItem('nickname');
+    location.reload();
+  }
+}
+
 function renderMembers(){
   document.getElementById('memberBanner').textContent = '目前已經有 ' + MEMBERS.length + ' 位團員上車 🚗';
   const ids = checkableItems();
@@ -1384,7 +1407,7 @@ function renderMembers(){
       <div class="member-avatar" ${m.avatar? 'data-open-avatar="'+idx+'"' : ''}>${m.avatar? '<img src="'+m.avatar+'">' : esc(initial)}</div>
       <div class="member-name">${esc(m.name)}${isSelf? ' (你)':''}</div>
       <div class="member-meta">已完成 ${cnt} 個景點</div>
-      ${isSelf? '<button class="avatar-edit-btn" id="selfAvatarBtn">📷</button><input type="file" accept="image/*" capture="user" style="display:none" id="selfAvatarInput">' : ''}
+      ${isSelf? '<button class="avatar-edit-btn" id="selfAvatarBtn">📷</button><input type="file" accept="image/*" capture="user" style="display:none" id="selfAvatarInput"><button class="avatar-edit-btn" id="selfClearNickBtn">🔄</button>' : ''}
       <button class="member-del-btn" data-del-member="${esc(m.name)}">🗑</button>
     </div>`;
   }).join('');
@@ -1422,6 +1445,8 @@ function renderMembers(){
       }
     });
   }
+  const selfClearBtn = document.getElementById('selfClearNickBtn');
+  if(selfClearBtn) selfClearBtn.addEventListener('click', clearNickname);
 }
 
 async function deleteMember(name){
@@ -1704,6 +1729,33 @@ function attachMoneyListeners(){
   });
 }
 
+function renderRecap(){
+  const wrap = document.getElementById('recapContent');
+  const totalPhotos = Object.values(PHOTOS).reduce((s,arr)=>s+(arr?arr.length:0),0);
+  const totalJournal = Object.values(JOURNAL).reduce((s,arr)=>s+(arr?arr.length:0),0);
+  const ids = checkableItems();
+  const totalDone = doneItemsCount(ids);
+  const totalSpend = EXPENSES.reduce((s,e)=>s+ntdOf(e),0);
+  const board = MEMBERS.map(m=>{
+    let cnt=0;
+    ids.forEach(id=>{ const r=CHECKINS[id]; if(r&&r.checkedBy&&r.checkedBy.includes(m.name)) cnt++; });
+    return {name:m.name, cnt};
+  }).sort((a,b)=>b.cnt-a.cnt);
+
+  wrap.innerHTML = `
+    <div class="recap-grid">
+      <div class="recap-stat"><div class="rnum">${totalDone}/${ids.length}</div><div class="rlabel">✅ 共同完成景點</div></div>
+      <div class="recap-stat"><div class="rnum">${totalPhotos}</div><div class="rlabel">📷 上傳照片</div></div>
+      <div class="recap-stat"><div class="rnum">${totalJournal}</div><div class="rlabel">💌 心得篇數</div></div>
+      <div class="recap-stat"><div class="rnum">NT$${Math.round(totalSpend).toLocaleString()}</div><div class="rlabel">💰 總花費</div></div>
+    </div>
+    <div class="info-card">
+      <h3>🏆 景點達成排行</h3>
+      ${board.length? board.map((b,i)=>'<div class="recap-board-row"><span class="recap-rank">'+(i+1)+'</span><span style="flex:1;font-weight:700;">'+esc(b.name)+'</span><span style="color:var(--ink-soft);font-size:12.5px;">'+b.cnt+' 個景點</span></div>').join('') : '<p class="settle-empty">還沒有人打卡呢</p>'}
+    </div>
+  `;
+}
+
 /* ---------- Tabs ---------- */
 function initTabs(){
   document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1830,9 +1882,11 @@ async function enterApp(){
   initTabs();
   initLightbox();
   initSettleModal();
+  document.getElementById('clearNickBtn1').addEventListener('click', clearNickname);
 
   expenseParticipants = new Set(MEMBERS.map(m=>m.name));
   renderMoney();
+  renderRecap();
 
   document.getElementById('personalAddBtn').addEventListener('click', addPersonalItem);
   document.getElementById('personalInput').addEventListener('keydown', e=>{
