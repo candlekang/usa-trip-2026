@@ -159,7 +159,6 @@
   .map-link:active{background:var(--teal);color:#15121C;}
 
   .action-row{margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .member-pips{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
   .pip{
     width:22px;height:22px;min-width:22px;border-radius:50%;border:1.8px solid var(--outline);
     display:inline-flex;align-items:center;justify-content:center;background:var(--bg);position:relative;
@@ -221,14 +220,10 @@
     font-size:13px;resize:vertical;min-height:44px;outline:none;background:var(--bg);color:var(--ink);
   }
   .checklist-item{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px dashed var(--line);}
-  .checklist-item.stacked{flex-direction:column;align-items:stretch;gap:8px;}
-  .checklist-item.stacked .ci-label{font-size:14.5px;font-weight:600;}
-  .checklist-item.stacked.checked .ci-label{text-decoration:line-through;color:var(--ink-soft);}
   .checklist-item:last-child{border-bottom:none;}
   .checklist-item input{width:19px;height:19px;accent-color:var(--sage);}
   .checklist-item > span{font-size:14.5px;font-weight:600;flex:1;word-break:break-word;}
   .checklist-item.checked > span{text-decoration:line-through;color:var(--ink-soft);}
-  .checklist-item .cw{font-size:11px;color:var(--ink-soft);white-space:nowrap;}
   .checklist-item .del{background:none;border:none;color:var(--ink-soft);font-size:16px;padding:2px 6px;}
   .add-row{display:flex;gap:6px;margin-top:12px;}
   .add-row input{flex:1;padding:9px 12px;border-radius:999px;border:1.5px solid var(--line);font-size:14px;outline:none;background:var(--bg);color:var(--ink);}
@@ -803,13 +798,17 @@ function isTypingActive(){
 
 async function refreshShared(){
   if(isTypingActive()) return;
-  CHECKINS = (await sGet('checkins', true)) || {};
-  JOURNAL = (await sGet('journal', true)) || {};
-  PRETRIP = (await sGet('pretrip', true)) || {};
-  INFO_NOTES = (await sGet('info_notes', true)) || {};
-  MEMBERS = (await sGet('members', true)) || [];
-  PHOTOS = (await sGet('photos', true)) || {};
-  EXPENSES = (await sGet('expenses', true)) || [];
+  const [ck, jr, pt, inf, mm, ph, ex] = await Promise.all([
+    sGet('checkins', true), sGet('journal', true), sGet('pretrip', true),
+    sGet('info_notes', true), sGet('members', true), sGet('photos', true), sGet('expenses', true)
+  ]);
+  CHECKINS = ck || {};
+  JOURNAL = jr || {};
+  PRETRIP = pt || {};
+  INFO_NOTES = inf || {};
+  MEMBERS = mm || [];
+  PHOTOS = ph || {};
+  EXPENSES = ex || [];
   renderTopbar();
   renderDayList();
   renderInfo();
@@ -1079,7 +1078,8 @@ function attachDayListeners(){
       if(el.checked){ if(!rec.checkedBy.includes(NICK)) rec.checkedBy.push(NICK); }
       else { rec.checkedBy = rec.checkedBy.filter(n=>n!==NICK); }
       CHECKINS[id] = rec;
-      await sSet('checkins', CHECKINS, true);
+      const ok = await sSet('checkins', CHECKINS, true);
+      if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       renderDayList(); renderTopbar();
     });
   });
@@ -1095,7 +1095,8 @@ function attachDayListeners(){
       rec.comments.push({by:NICK, text, ts:Date.now(), id:genId()});
       CHECKINS[id] = rec;
       openComments.add(id);
-      await sSet('checkins', CHECKINS, true);
+      const ok = await sSet('checkins', CHECKINS, true);
+      if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       renderDayList();
     });
   });
@@ -1108,7 +1109,8 @@ function attachDayListeners(){
       if(!text) return;
       JOURNAL[d] = JOURNAL[d] || [];
       JOURNAL[d].push({by:NICK, text, ts:Date.now(), id:genId()});
-      await sSet('journal', JOURNAL, true);
+      const ok = await sSet('journal', JOURNAL, true);
+      if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       renderDayList();
     });
   });
@@ -1137,7 +1139,8 @@ function attachDayListeners(){
       if(rec){
         const c = (rec.comments||[]).find(x=>x.id===cId);
         if(c) c.text = text;
-        await sSet('checkins', CHECKINS, true);
+        const ok = await sSet('checkins', CHECKINS, true);
+        if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       }
       editingComments.delete(cId);
       renderDayList();
@@ -1150,7 +1153,8 @@ function attachDayListeners(){
       const rec = CHECKINS[itId];
       if(rec){
         rec.comments = (rec.comments||[]).filter(x=>x.id!==cId);
-        await sSet('checkins', CHECKINS, true);
+        const ok = await sSet('checkins', CHECKINS, true);
+        if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       }
       renderDayList();
     });
@@ -1178,7 +1182,8 @@ function attachDayListeners(){
       if(!text) return;
       const entry = (JOURNAL[d]||[]).find(x=>x.id===jId);
       if(entry) entry.text = text;
-      await sSet('journal', JOURNAL, true);
+      const ok = await sSet('journal', JOURNAL, true);
+      if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       editingJournal.delete(jId);
       renderDayList();
     });
@@ -1188,7 +1193,8 @@ function attachDayListeners(){
       e.stopPropagation();
       const d = btn.dataset.delJournal, jId = btn.dataset.journalId;
       JOURNAL[d] = (JOURNAL[d]||[]).filter(x=>x.id!==jId);
-      await sSet('journal', JOURNAL, true);
+      const ok = await sSet('journal', JOURNAL, true);
+      if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       renderDayList();
     });
   });
@@ -1290,7 +1296,8 @@ function renderInfo(){
       clearTimeout(t);
       t = setTimeout(async ()=>{
         INFO_NOTES[ta.dataset.info] = ta.value;
-        await sSet('info_notes', INFO_NOTES, true);
+        const ok = await sSet('info_notes', INFO_NOTES, true);
+        if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       }, 500);
     });
   });
@@ -1308,9 +1315,9 @@ function renderChecklist(){
       <span class="mark">${isChecked?'✓':''}</span>
     </label>`;
     return `
-    <div class="checklist-item stacked ${isChecked?'checked':''}">
-      <span class="ci-label">${esc(label)}</span>
+    <div class="checklist-item ${isChecked?'checked':''}">
       ${selfPip}
+      <span class="ci-label">${esc(label)}</span>
     </div>`;
   }).join('');
   document.querySelectorAll('input[type=checkbox][data-pretrip]').forEach(el=>{
@@ -1321,7 +1328,8 @@ function renderChecklist(){
       if(el.checked){ if(!rec.checkedBy.includes(NICK)) rec.checkedBy.push(NICK); }
       else { rec.checkedBy = rec.checkedBy.filter(n=>n!==NICK); }
       PRETRIP[idx] = rec;
-      await sSet('pretrip', PRETRIP, true);
+      const ok = await sSet('pretrip', PRETRIP, true);
+      if(!ok) alert('存檔失敗，可能是網路不穩，再試一次看看？');
       renderChecklist();
     });
   });
@@ -1332,8 +1340,11 @@ function renderPersonal(){
   if(!PERSONAL.length){ wrap.innerHTML = '<p style="color:var(--ink-soft);font-size:13px;margin:0 0 4px;">目前還沒有項目，在下面新增你自己要準備的東西吧！</p>'; return; }
   wrap.innerHTML = PERSONAL.map((it, idx)=>`
     <div class="checklist-item ${it.checked?'checked':''}">
-      <input type="checkbox" data-personal="${idx}" ${it.checked?'checked':''}>
-      <span>${esc(it.text)}</span>
+      <label class="pip self ${it.checked?'checked':''}">
+        <input type="checkbox" data-personal="${idx}" ${it.checked?'checked':''}/>
+        <span class="mark">${it.checked?'✓':''}</span>
+      </label>
+      <span class="ci-label">${esc(it.text)}</span>
       <button class="del" data-personal-del="${idx}">✕</button>
     </div>`).join('');
   document.querySelectorAll('[data-personal]').forEach(el=>{
@@ -1652,7 +1663,12 @@ async function submitExpense(){
 
   if(editingExpenseId){
     const exp = EXPENSES.find(x=>x.id===editingExpenseId);
-    Object.assign(exp, {desc, amount, currency, rate, payer, note, participants, receipt:pendingReceipt});
+    if(exp){
+      Object.assign(exp, {desc, amount, currency, rate, payer, note, participants, receipt:pendingReceipt});
+    } else {
+      alert('這筆支出剛好被刪除了，幫你改成新增一筆');
+      EXPENSES.push({id:genId(), desc, amount, currency, rate, payer, note, participants, receipt:pendingReceipt, by:NICK, ts:Date.now()});
+    }
   } else {
     EXPENSES.push({id:genId(), desc, amount, currency, rate, payer, note, participants, receipt:pendingReceipt, by:NICK, ts:Date.now()});
   }
@@ -1747,6 +1763,14 @@ async function boot(){
     document.getElementById('goBtn').addEventListener('click', async ()=>{
       const v = document.getElementById('nickInput').value.trim();
       if(!v) return;
+      const goBtn = document.getElementById('goBtn');
+      goBtn.disabled = true;
+      const existing = (await sGet('members', true)) || [];
+      if(existing.find(m=>m.name===v)){
+        alert('「'+v+'」已經有人用這個名字了，換一個或加個記號區分一下吧！');
+        goBtn.disabled = false;
+        return;
+      }
       NICK = v;
       await sSet('nickname', v, false);
       await enterApp();
@@ -1763,14 +1787,19 @@ async function enterApp(){
   document.getElementById('tabbar').style.display = 'flex';
   document.getElementById('view-guide').classList.add('active');
 
-  CHECKINS = (await sGet('checkins', true)) || {};
-  JOURNAL = (await sGet('journal', true)) || {};
-  PRETRIP = (await sGet('pretrip', true)) || {};
-  INFO_NOTES = (await sGet('info_notes', true)) || {};
-  PERSONAL = (await sGet('personal_extra', false)) || [];
-  MEMBERS = (await sGet('members', true)) || [];
-  PHOTOS = (await sGet('photos', true)) || {};
-  EXPENSES = (await sGet('expenses', true)) || [];
+  const [ck, jr, pt, inf, pr, mm, ph, ex] = await Promise.all([
+    sGet('checkins', true), sGet('journal', true), sGet('pretrip', true),
+    sGet('info_notes', true), sGet('personal_extra', false), sGet('members', true),
+    sGet('photos', true), sGet('expenses', true)
+  ]);
+  CHECKINS = ck || {};
+  JOURNAL = jr || {};
+  PRETRIP = pt || {};
+  INFO_NOTES = inf || {};
+  PERSONAL = pr || [];
+  MEMBERS = mm || [];
+  PHOTOS = ph || {};
+  EXPENSES = ex || [];
 
   if(!MEMBERS.find(m=>m.name===NICK)){
     MEMBERS.push({name:NICK, ts:Date.now(), avatar:pendingAvatar||null});
