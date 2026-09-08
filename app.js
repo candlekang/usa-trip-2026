@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-8';
+const BUILD = 'v2-dev-9';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -61,6 +61,10 @@ let JOURNAL = {};         // dayId -> [{id, by, text, ts}]
 let PHOTOS = {};          // dayId -> [{id, by, data, ts}]
 let EXPENSES = [];        // [{id, ...}]
 let NOTES = {};           // key -> text
+let BOARD = [];           // [{id, by, text, ts, parentId}]
+let REACTIONS = {};       // postId -> { uid: [emoji...] }
+let replyingTo = null;    // 正在回覆的 postId
+let emojiTarget = null;   // 表情選擇器要套用到的 postId
 let PERSONAL = [];        // localStorage（個人，不同步）
 
 let editingExpenseId = null;
@@ -314,9 +318,19 @@ function enterApp() {
     NOTES = {}; s.forEach(d => { NOTES[d.id] = d.data().text || ''; });
     requestRender(renderInfo);
   }));
+  unsubs.push(onSnapshot(collection(db, 'board'), s => {
+    BOARD = []; s.forEach(d => BOARD.push({ id: d.id, ...d.data() }));
+    requestRender(renderBoard);
+  }));
+  unsubs.push(onSnapshot(collection(db, 'reactions'), s => {
+    REACTIONS = {}; s.forEach(d => { const r = d.data(); (REACTIONS[r.postId] ||= {})[r.by] = r.emojis || []; });
+    requestRender(renderBoard);
+  }));
 
   renderAll();
   initTabs(); initLightbox(); initSettleModal(); initOfflineBanner();
+  $('boardSendBtn').addEventListener('click', () => sendPost(null));
+  $('emojiPopClose').addEventListener('click', closeEmojiPop);
   $('personalAddBtn').addEventListener('click', addPersonalItem);
   $('personalInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPersonalItem(); });
   $('logoutBtn1').addEventListener('click', logout);
@@ -326,7 +340,7 @@ function enterApp() {
 function renderAll() {
   renderTopbar(); renderDayList(); renderRegions(); renderInfo(); renderChecklist();
   renderPersonal(); renderGuide(); renderMembers(); renderExpenseForm(); renderExpenseList();
-  renderSettlement(); renderRecap();
+  renderSettlement(); renderRecap(); renderBoard();
 }
 
 /* 照片：展開某一天才開始監聽那一天 */
@@ -993,6 +1007,120 @@ function renderRecap() {
       ${board.length ? board.map((b, i) => '<div class="recap-board-row"><span class="recap-rank">' + (i + 1) + '</span><span style="flex:1;font-weight:700;">' + esc(b.name) + '</span><span style="color:var(--ink-soft);font-size:12.5px;">' + b.cnt + ' 個景點</span></div>').join('') : '<p class="settle-empty">還沒有人打卡呢</p>'}
     </div>`;
 }
+
+
+/* ===================== 幹話板 ===================== */
+const QUICK_EMOJI = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+function fmtTime(ts) {
+  const d = new Date(ts), now = new Date();
+  const same = d.toDateString() === now.toDateString();
+  const hm = d.toTimeString().slice(0, 5);
+  return same ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
+}
+function reactionSummary(postId) {
+  // emoji -> [uid...]
+  const out = {};
+  Object.entries(REACTIONS[postId] || {}).forEach(([uid, list]) => list.forEach(e => (out[e] ||= []).push(uid)));
+  return out;
+}
+function reactRowHtml(postId) {
+  const sum = reactionSummary(postId);
+  const mine = new Set((REACTIONS[postId] || {})[ME.uid] || []);
+  const shown = [...new Set([...QUICK_EMOJI, ...Object.keys(sum)])];
+  return '<div class="react-row">' + shown.map(e => {
+    const uids = sum[e] || [];
+    if (!uids.length && !QUICK_EMOJI.includes(e)) return '';
+    const title = uids.map(nameOf).join('、');
+    return `<button type="button" class="react-chip ${mine.has(e) ? 'on' : ''}" data-react="${esc(postId)}" data-emoji="${esc(e)}" title="${esc(title)}">${esc(e)}${uids.length ? '<span class="cnt">' + uids.length + '</span>' : ''}</button>`;
+  }).join('') + `<button type="button" class="react-chip more" data-react-more="${esc(postId)}" title="更多表情">＋</button></div>`;
+}
+function postHtml(p, isReply, extra = '') {
+  const mine = p.by === ME.uid;
+  const deleted = p.text === '（已刪除）';
+  return `
+    <div class="${isReply ? 'reply' : 'post'}" id="post-${esc(p.id)}">
+      <div class="post-head"><b>${esc(nameOf(p.by))}</b><span class="pt">${esc(fmtTime(p.ts))}</span></div>
+      <div class="post-text ${deleted ? 'deleted' : ''}">${esc(p.text)}</div>
+      ${reactRowHtml(p.id)}
+      <div class="post-actions">
+        ${!isReply ? '<button data-reply-to="' + esc(p.id) + '">回覆</button>' : ''}
+        ${mine && !deleted ? '<button data-del-post="' + esc(p.id) + '">刪除</button>' : ''}
+      </div>
+      ${extra}
+    </div>`;
+}
+function renderBoard() {
+  const wrap = $('boardList');
+  const tops = BOARD.filter(p => !p.parentId).sort((a, b) => b.ts - a.ts);
+  const replies = {};
+  BOARD.filter(p => p.parentId).sort((a, b) => a.ts - b.ts).forEach(p => (replies[p.parentId] ||= []).push(p));
+  if (!tops.length) { wrap.innerHTML = '<p class="settle-empty">還沒有人講幹話，你先來 🎤</p>'; return; }
+  wrap.innerHTML = tops.map(p => {
+    const rs = replies[p.id] || [];
+    const replyForm = replyingTo === p.id ? `
+      <div class="reply-form">
+        <textarea data-reply-input="${esc(p.id)}" placeholder="回覆…" maxlength="200"></textarea>
+        <button data-reply-send="${esc(p.id)}">送出</button>
+      </div>` : '';
+    const extra = (rs.length ? '<div class="replies">' + rs.map(r => postHtml(r, true)).join('') + '</div>' : '') + replyForm;
+    return postHtml(p, false, extra);
+  }).join('');
+  attachBoardListeners();
+}
+function attachBoardListeners() {
+  const on = (sel, ev, fn) => document.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
+  on('[data-react]', 'click', (el) => toggleReaction(el.dataset.react, el.dataset.emoji));
+  on('[data-react-more]', 'click', (el) => openEmojiPop(el.dataset.reactMore));
+  on('[data-reply-to]', 'click', (el) => { replyingTo = replyingTo === el.dataset.replyTo ? null : el.dataset.replyTo; renderBoard(); const ta = document.querySelector('textarea[data-reply-input]'); if (ta) ta.focus(); });
+  on('[data-reply-send]', 'click', (el) => sendPost(el.dataset.replySend));
+  on('[data-del-post]', 'click', (el) => {
+    const id = el.dataset.delPost;
+    if (!confirm('刪除這則？')) return;
+    const hasReplies = BOARD.some(p => p.parentId === id);
+    if (hasReplies) fire(updateDoc(doc(db, 'board', id), { text: '（已刪除）' }));
+    else fire(deleteDoc(doc(db, 'board', id)));
+  });
+}
+function sendPost(parentId) {
+  const ta = parentId ? document.querySelector('textarea[data-reply-input="' + CSS.escape(parentId) + '"]') : $('boardInput');
+  if (!ta) return;
+  const text = ta.value.trim().slice(0, 200);
+  if (!text) return;
+  ta.value = ''; ta.blur();
+  if (parentId) replyingTo = null;
+  fire(setDoc(doc(db, 'board', newId('board')), { by: ME.uid, text, ts: Date.now(), parentId: parentId || null }));
+}
+function toggleReaction(postId, emoji) {
+  const cur = new Set((REACTIONS[postId] || {})[ME.uid] || []);
+  cur.has(emoji) ? cur.delete(emoji) : cur.add(emoji);
+  const ref = doc(db, 'reactions', postId + '_' + ME.uid);
+  if (cur.size) fire(setDoc(ref, { postId, by: ME.uid, emojis: [...cur].slice(0, 20), ts: Date.now() }));
+  else fire(deleteDoc(ref));
+}
+/* 表情選擇器：第一次點才從 CDN 載入 emoji-picker-element */
+let pickerLoaded = false;
+async function openEmojiPop(postId) {
+  emojiTarget = postId;
+  const pop = $('emojiPop');
+  if (!pickerLoaded) {
+    try {
+      await import('https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js');
+      const picker = document.createElement('emoji-picker');
+      picker.setAttribute('locale', 'zh_TW');
+      picker.addEventListener('emoji-click', (e) => {
+        const em = e.detail && e.detail.unicode; if (em && emojiTarget) toggleReaction(emojiTarget, em);
+        closeEmojiPop();
+      });
+      pop.appendChild(picker);
+      pickerLoaded = true;
+    } catch (e) {
+      toast('表情選擇器載不進來（可能沒訊號），先用快速反應吧'); return;
+    }
+  }
+  pop.classList.add('open');
+}
+function closeEmojiPop() { $('emojiPop').classList.remove('open'); emojiTarget = null; }
+document.addEventListener('click', (e) => { const pop = $('emojiPop'); if (pop.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('[data-react-more]')) closeEmojiPop(); });
 
 /* ===================== 雜項 UI ===================== */
 function initTabs() {

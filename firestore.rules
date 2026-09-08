@@ -169,6 +169,32 @@ service cloud.firestore {
         && tsOk(request.resource.data.ts);
     }
 
+    // ---------- 幹話板：貼文 / 回覆 ----------
+    match /board/{id} {
+      allow read: if member();
+      allow create: if member() && isOwner(request.resource.data)
+        && request.resource.data.keys().hasOnly(['by', 'text', 'ts', 'parentId'])
+        && strLen(request.resource.data.text, 200)
+        && tsOk(request.resource.data.ts)
+        && (request.resource.data.parentId == null || strLen(request.resource.data.parentId, 40));
+      allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
+        && strLen(request.resource.data.text, 200);
+      allow delete: if member() && isOwner(resource.data);
+    }
+    // ---------- 表情反應：一人一則一份文件 {postId}_{uid} ----------
+    match /reactions/{rid} {
+      allow read: if member();
+      allow create, update: if member()
+        && rid == request.resource.data.postId + '_' + uid()
+        && request.resource.data.keys().hasOnly(['postId', 'by', 'emojis', 'ts'])
+        && request.resource.data.by == uid()
+        && strLen(request.resource.data.postId, 40)
+        && request.resource.data.emojis is list && request.resource.data.emojis.size() <= 20
+        && tsOk(request.resource.data.ts);
+      allow delete: if member() && resource.data.by == uid();
+    }
+
     // ---------- 其他一律拒絕 ----------
     match /{document=**} {
       allow read, write: if false;

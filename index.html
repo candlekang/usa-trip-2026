@@ -332,6 +332,32 @@
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .member-pips{display:inline-flex;gap:4px;margin-left:4px;}
   .photo-loading{font-size:12px;color:var(--ink-soft);align-self:center;}
+
+  /* ---- 幹話板 ---- */
+  .post{background:var(--paper);border:2px solid var(--outline);border-radius:16px;padding:12px 14px;margin-bottom:12px;box-shadow:3px 3px 0 var(--shadow);}
+  .post-head{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);margin-bottom:6px;}
+  .post-head b{color:var(--ink);font-size:13px;}
+  .post-head .pt{margin-left:auto;white-space:nowrap;}
+  .post-text{font-size:14.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
+  .post-text.deleted{color:var(--ink-soft);font-style:italic;}
+  .react-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;}
+  .react-chip{border:1.5px solid var(--line);background:var(--paper2);border-radius:999px;padding:3px 9px;font-size:13px;color:var(--ink);line-height:1.4;}
+  .react-chip.on{border-color:var(--teal);background:var(--teal-tint);}
+  .react-chip .cnt{font-size:11px;margin-left:3px;color:var(--ink-soft);}
+  .react-chip.more{font-weight:700;}
+  .post-actions{display:flex;gap:10px;margin-top:6px;}
+  .post-actions button{background:none;border:none;color:var(--ink-soft);font-size:12px;padding:2px 0;text-decoration:underline;}
+  .replies{margin-top:8px;padding-left:12px;border-left:2px dashed var(--line);}
+  .reply{padding:6px 0;}
+  .reply-form{display:flex;gap:6px;margin-top:8px;}
+  .reply-form textarea,.compose textarea{flex:1;min-height:40px;padding:8px 12px;border-radius:12px;border:1.5px solid var(--line);font-size:13.5px;background:var(--bg);color:var(--ink);resize:vertical;font-family:inherit;outline:none;}
+  .reply-form button,.compose button{padding:0 14px;border:none;border-radius:12px;background:var(--teal);color:#15121C;font-weight:700;font-size:13px;}
+  .compose{display:flex;gap:6px;margin-bottom:14px;}
+  .compose button{background:var(--cherry);}
+  .emoji-pop{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:70;display:none;box-shadow:0 8px 24px rgba(0,0,0,.35);border-radius:14px;overflow:hidden;}
+  .emoji-pop.open{display:block;}
+  .emoji-pop emoji-picker{--num-columns:8;--emoji-size:1.5rem;height:320px;width:min(92vw,360px);}
+  .emoji-pop .ep-close{position:absolute;top:6px;right:8px;z-index:1;background:none;border:none;font-size:18px;color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -455,6 +481,15 @@
       <div id="expenseList"></div>
     </div>
 
+    <div class="view" id="view-board">
+      <div class="section-title">💬 幹話板</div>
+      <div class="compose">
+        <textarea id="boardInput" placeholder="想說什麼就說…（200 字內）" maxlength="200"></textarea>
+        <button id="boardSendBtn">發文</button>
+      </div>
+      <div id="boardList"></div>
+    </div>
+
     <div class="view" id="view-recap">
       <div class="section-title">🎬 旅行回顧</div>
       <div id="recapContent"></div>
@@ -482,12 +517,14 @@
       <button class="tab-btn" data-view="view-checklist"><span class="ic">✅</span>清單</button>
       <button class="tab-btn" data-view="view-members"><span class="ic">👥</span>團員</button>
       <button class="tab-btn" data-view="view-money"><span class="ic">💰</span>分帳</button>
+      <button class="tab-btn" data-view="view-board"><span class="ic">💬</span>幹話</button>
       <button class="tab-btn" data-view="view-recap"><span class="ic">🎬</span>回顧</button>
     </div>
   </div>
 
 </div>
 <div id="toast"></div>
+<div class="emoji-pop" id="emojiPop"><button class="ep-close" id="emojiPopClose">✕</button></div>
 <script type="module" src="./app.js"></script>
 <script>
   // 看門狗：15 秒內主程式沒載入完成（SDK 被擋、網路異常），給使用者一句話而不是無聲卡死
