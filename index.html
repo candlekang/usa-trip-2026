@@ -489,5 +489,13 @@
 </div>
 <div id="toast"></div>
 <script type="module" src="./app.js"></script>
+<script>
+  // 看門狗：15 秒內主程式沒載入完成（SDK 被擋、網路異常），給使用者一句話而不是無聲卡死
+  setTimeout(function(){
+    if (window.__appReady) return;
+    var el = document.getElementById('screen-loading');
+    if (el) el.innerHTML = '<div class="denied-box"><b>載入太久了</b><br>請確認網路後重新整理。如果一直這樣，請把這個畫面截圖給管理者。</div>';
+  }, 15000);
+</script>
 </body>
 </html>

@@ -1,14 +1,51 @@
 {
-  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "hosting": {
     "public": ".",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "tests/**", "scripts/**", "data/**", "package*.json", "index old.html", "illustration_*.png"]
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "tests/**",
+      "scripts/**",
+      "data/**",
+      "package*.json",
+      "index old.html",
+      "illustration_*.png"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(html|js)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      }
+    ]
   },
   "emulators": {
-    "auth": { "host": "0.0.0.0", "port": 9099 },
-    "firestore": { "host": "0.0.0.0", "port": 8080 },
-    "hosting": { "host": "0.0.0.0", "port": 5050 },
-    "ui": { "enabled": true, "host": "0.0.0.0", "port": 4000 },
+    "auth": {
+      "host": "0.0.0.0",
+      "port": 9099
+    },
+    "firestore": {
+      "host": "0.0.0.0",
+      "port": 8080
+    },
+    "hosting": {
+      "host": "0.0.0.0",
+      "port": 5050
+    },
+    "ui": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 4000
+    },
     "singleProjectMode": true
   }
 }

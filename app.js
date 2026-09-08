@@ -30,7 +30,10 @@ const USE_EMU = new URLSearchParams(location.search).has('emu')
   || location.hostname.startsWith('mac-mini');
 let db;
 try {
-  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({ forceOwnership: true }) }) });
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({ forceOwnership: true }) }),
+    experimentalForceLongPolling: true,   // 旅館/行動網路的 proxy 常卡住預設 WebChannel，long polling 最穩
+  });
 } catch (e) {
   db = getFirestore(app);
 }
@@ -42,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-7';
+const BUILD = 'v2-dev-8';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -1017,6 +1020,7 @@ function initOfflineBanner() {
 }
 
 /* ===================== BOOT ===================== */
+window.__appReady = true;
 $('loginBtn').addEventListener('click', login);
 $('deniedLogoutBtn').addEventListener('click', logout);
 initNickScreen();
