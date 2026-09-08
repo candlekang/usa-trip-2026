@@ -1,0 +1,177 @@
+rules_version = '2';
+
+// 美國行 2026 — Firestore Security Rules
+//
+// 原則：
+//   1. 任何讀取都要先過白名單（allow/{email}，只有 Rules 看得到）。
+//   2. 任何寫入都要是本人（by == request.auth.uid），改刪只限本人。
+//   3. 共用打勾（checkins / pretrip）只能動自己那一格 checkedBy.{uid}。
+//   4. 行程設定（config/*）與白名單（allow/*）前端唯讀 / 不可讀，只由管理者用 CLI 寫。
+//
+// 這份規則有單元測試：tests/rules.test.mjs（npm run test:rules）。
+
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+    function email() {
+      return request.auth.token.email;
+    }
+    function member() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(db)/documents/allow/$(email()));
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+    function isOwner(data) {
+      return data.by == uid();
+    }
+    function strLen(s, maxLen) {
+      return s is string && s.size() >= 1 && s.size() <= maxLen;
+    }
+    function optStr(s, maxLen) {
+      return s == null || (s is string && s.size() <= maxLen);
+    }
+    // base64 data URL 上限（縮圖 / 收據）
+    function imageOk(s) {
+      return s == null || (s is string && s.size() <= 400000 && s.matches('data:image/.*'));
+    }
+    function tsOk(t) {
+      return t is number;
+    }
+
+    // ---------- 白名單：前端完全不可讀寫 ----------
+    match /allow/{emailId} {
+      allow read, write: if false;
+    }
+
+    // ---------- 行程設定：成員唯讀 ----------
+    match /config/{docId} {
+      allow read: if member();
+      allow write: if false;
+    }
+
+    // ---------- 成員 ----------
+    match /members/{memberId} {
+      allow read: if member();
+      allow create: if member() && memberId == uid()
+        && request.resource.data.keys().hasOnly(['name', 'avatar', 'joinedAt'])
+        && strLen(request.resource.data.name, 12)
+        && imageOk(request.resource.data.get('avatar', null))
+        && tsOk(request.resource.data.joinedAt);
+      allow update: if member() && memberId == uid()
+        && request.resource.data.keys().hasOnly(['name', 'avatar', 'joinedAt'])
+        && strLen(request.resource.data.name, 12)
+        && imageOk(request.resource.data.get('avatar', null))
+        && request.resource.data.joinedAt == resource.data.joinedAt;
+      allow delete: if member() && memberId == uid();
+    }
+
+    // ---------- 共用打勾：只能動自己那一格 ----------
+    function checkinCreateOk() {
+      return request.resource.data.keys().hasOnly(['checkedBy'])
+        && request.resource.data.checkedBy is map
+        && request.resource.data.checkedBy.keys().hasOnly([uid()]);
+    }
+    function checkinUpdateOk() {
+      return request.resource.data.keys().hasOnly(['checkedBy'])
+        && request.resource.data.checkedBy is map
+        && request.resource.data.checkedBy.diff(resource.data.checkedBy).affectedKeys().hasOnly([uid()]);
+    }
+    match /checkins/{itemId} {
+      allow read: if member();
+      allow create: if member() && checkinCreateOk();
+      allow update: if member() && checkinUpdateOk();
+      allow delete: if false;
+    }
+    match /pretrip/{itemId} {
+      allow read: if member();
+      allow create: if member() && checkinCreateOk();
+      allow update: if member() && checkinUpdateOk();
+      allow delete: if false;
+    }
+
+    // ---------- 景點留言 ----------
+    match /comments/{id} {
+      allow read: if member();
+      allow create: if member() && isOwner(request.resource.data)
+        && request.resource.data.keys().hasOnly(['itemId', 'by', 'text', 'ts'])
+        && strLen(request.resource.data.itemId, 40)
+        && strLen(request.resource.data.text, 60)
+        && tsOk(request.resource.data.ts);
+      allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
+        && strLen(request.resource.data.text, 60);
+      allow delete: if member() && isOwner(resource.data);
+    }
+
+    // ---------- 每日心得 ----------
+    match /journal/{id} {
+      allow read: if member();
+      allow create: if member() && isOwner(request.resource.data)
+        && request.resource.data.keys().hasOnly(['dayId', 'by', 'text', 'ts'])
+        && strLen(request.resource.data.dayId, 10)
+        && strLen(request.resource.data.text, 80)
+        && tsOk(request.resource.data.ts);
+      allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
+        && strLen(request.resource.data.text, 80);
+      allow delete: if member() && isOwner(resource.data);
+    }
+
+    // ---------- 照片牆（縮圖 base64）----------
+    match /photos/{id} {
+      allow read: if member();
+      allow create: if member() && isOwner(request.resource.data)
+        && request.resource.data.keys().hasOnly(['dayId', 'by', 'data', 'ts'])
+        && strLen(request.resource.data.dayId, 10)
+        && request.resource.data.data is string
+        && imageOk(request.resource.data.data)
+        && tsOk(request.resource.data.ts);
+      allow update: if false;
+      allow delete: if member() && isOwner(resource.data);
+    }
+
+    // ---------- 分帳 ----------
+    function expenseShapeOk(d) {
+      return d.keys().hasOnly(['desc', 'amount', 'currency', 'rate', 'payer', 'note', 'participants', 'receipt', 'by', 'ts'])
+        && strLen(d.desc, 40)
+        && d.amount is number && d.amount > 0
+        && d.currency in ['USD', 'NTD']
+        && (d.currency == 'NTD' || (d.rate is number && d.rate > 0))
+        && strLen(d.payer, 128)
+        && optStr(d.get('note', null), 60)
+        && d.participants is list && d.participants.size() >= 1 && d.participants.size() <= 20
+        && imageOk(d.get('receipt', null))
+        && tsOk(d.ts);
+    }
+    match /expenses/{id} {
+      allow read: if member();
+      allow create: if member() && isOwner(request.resource.data) && expenseShapeOk(request.resource.data);
+      allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)
+        && expenseShapeOk(request.resource.data)
+        && request.resource.data.ts == resource.data.ts;
+      allow delete: if member() && isOwner(resource.data);
+    }
+
+    // ---------- 共用備註（重要資訊頁）----------
+    match /notes/{key} {
+      allow read: if member();
+      allow write: if member()
+        && request.resource.data.keys().hasOnly(['text', 'updatedBy', 'ts'])
+        && request.resource.data.text is string && request.resource.data.text.size() <= 2000
+        && request.resource.data.updatedBy == uid()
+        && tsOk(request.resource.data.ts);
+    }
+
+    // ---------- 其他一律拒絕 ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
