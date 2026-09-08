@@ -17,7 +17,7 @@ import {
 import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
   connectFirestoreEmulator, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc,
-  deleteField, getDoc, query, where,
+  deleteField, getDoc, getDocFromCache, query, where,
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
 import { firebaseConfig } from './firebase-config.js';
 import { REGION_ART, dayArt } from './art.js';
@@ -42,7 +42,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-5';
+const BUILD = 'v2-dev-6';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -84,7 +84,7 @@ function toast(msg) {
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600);
 }
 function showScreen(id) {
-  ['screen-login', 'screen-inapp', 'screen-denied', 'screen-nick', 'mainApp'].forEach(s => { $(s).style.display = s === id ? '' : 'none'; });
+  ['screen-loading', 'screen-login', 'screen-inapp', 'screen-denied', 'screen-nick', 'mainApp'].forEach(s => { $(s).style.display = s === id ? '' : 'none'; });
   $('landing').style.display = id === 'mainApp' ? 'none' : '';
   $('tabbar').style.display = id === 'mainApp' ? 'flex' : 'none';
 }
@@ -187,23 +187,25 @@ onAuthStateChanged(auth, async (user) => {
     showScreen('screen-login'); return;
   }
   ME = { uid: user.uid, email: user.email || '' };
-  // 白名單檢查：讀 config/itinerary，被拒 = 不在名單
+  showScreen('screen-loading');
+  // 白名單檢查：讀 config/itinerary，被拒 = 不在名單；離線就讀快取
   let cfgSnap;
   try {
-    cfgSnap = await getDoc(doc(db, 'config', 'itinerary'));
+    cfgSnap = await getDocSmart(doc(db, 'config', 'itinerary'));
   } catch (e) {
     if (e.code === 'permission-denied') {
       $('deniedEmail').textContent = ME.email;
       showScreen('screen-denied');
       return;
     }
+    showScreen('screen-login');
     toast('連線失敗，請檢查網路後重新整理'); return;
   }
-  if (!cfgSnap.exists()) { toast('行程資料尚未建立，請通知管理者'); return; }
+  if (!cfgSnap.exists()) { showScreen('screen-login'); toast('行程資料尚未建立，請通知管理者'); return; }
   applyConfig(cfgSnap.data());
 
-  // 監聽成員；沒有自己的成員文件 → 先取暱稱
-  const meSnap = await getDoc(doc(db, 'members', ME.uid));
+  // 沒有自己的成員文件 → 先取暱稱
+  const meSnap = await getDocSmart(doc(db, 'members', ME.uid));
   if (!meSnap.exists()) {
     $('nickInput').value = (user.displayName || '').slice(0, 12);
     $('goBtn').disabled = !$('nickInput').value.trim();
@@ -212,6 +214,17 @@ onAuthStateChanged(auth, async (user) => {
   }
   enterApp();
 });
+
+/* 先問伺服器，離線或逾時就退回本機快取 */
+async function getDocSmart(ref) {
+  try { return await getDoc(ref); }
+  catch (e) {
+    if (e.code === 'unavailable' || e.code === 'deadline-exceeded') {
+      try { return await getDocFromCache(ref); } catch (e2) { throw e; }
+    }
+    throw e;
+  }
+}
 
 function applyConfig(cfg) {
   CFG = cfg;
