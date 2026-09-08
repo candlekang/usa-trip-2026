@@ -1,0 +1,11 @@
+# 這個 repo 的 gitleaks 例外設定（只影響本 repo，全域 hook 不動）
+#
+# firebase-config.js 裡的 apiKey 是 Firebase Web SDK 的前端 config，
+# 設計上就是要放在瀏覽器裡公開的，不是機密；安全靠 Firestore Rules 與 Auth 授權網域。
+# 參考：https://firebase.google.com/docs/projects/api-keys
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Firebase web config is public by design"
+paths = ['''^firebase-config\.js$''']
