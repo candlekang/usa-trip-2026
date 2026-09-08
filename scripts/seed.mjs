@@ -25,8 +25,9 @@ if (!args.has('--allow-only')) {
   console.log(`[${target}] config/itinerary written: ${it.days.length} days, ${it.regions.length} regions`);
 }
 
-if (existsSync('data/allow.local.txt')) {
-  const emails = readFileSync('data/allow.local.txt', 'utf8').split('\n').map(s => s.trim().toLowerCase()).filter(s => s && !s.startsWith('#'));
+const allowFile = process.env.ALLOW_FILE || 'data/allow.local.txt';
+if (existsSync(allowFile)) {
+  const emails = readFileSync(allowFile, 'utf8').split('\n').map(s => s.trim().toLowerCase()).filter(s => s && !s.startsWith('#'));
   const batch = db.batch();
   for (const e of emails) batch.set(db.doc(`allow/${e}`), { addedAt: Date.now() });
   await batch.commit();
