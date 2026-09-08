@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-9';
+const BUILD = 'v2-dev-10';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -1075,11 +1075,24 @@ function attachBoardListeners() {
   on('[data-reply-send]', 'click', (el) => sendPost(el.dataset.replySend));
   on('[data-del-post]', 'click', (el) => {
     const id = el.dataset.delPost;
-    if (!confirm('刪除這則？')) return;
-    const hasReplies = BOARD.some(p => p.parentId === id);
-    if (hasReplies) fire(updateDoc(doc(db, 'board', id), { text: '（已刪除）' }));
-    else fire(deleteDoc(doc(db, 'board', id)));
+    const replies = BOARD.filter(p => p.parentId === id);
+    if (!confirm(replies.length ? `刪除這則和底下 ${replies.length} 則回覆？` : '刪除這則？')) return;
+    deleteThread(id, replies);
   });
+}
+/* 整串刪除：先刪回覆，再刪主文，最後清這些貼文的反應殘留 */
+async function deleteThread(id, replies) {
+  try {
+    await Promise.all(replies.map(r => deleteDoc(doc(db, 'board', r.id))));
+    await deleteDoc(doc(db, 'board', id));
+    const ids = [id, ...replies.map(r => r.id)];
+    const leftovers = [];
+    ids.forEach(pid => Object.keys(REACTIONS[pid] || {}).forEach(uid => leftovers.push(pid + '_' + uid)));
+    await Promise.all(leftovers.map(rid => deleteDoc(doc(db, 'reactions', rid)).catch(() => {})));
+  } catch (e) {
+    console.warn('deleteThread', e);
+    toast(e.code === 'permission-denied' ? '沒有權限刪這串' : '刪除失敗，再試一次看看？');
+  }
 }
 function sendPost(parentId) {
   const ta = parentId ? document.querySelector('textarea[data-reply-input="' + CSS.escape(parentId) + '"]') : $('boardInput');

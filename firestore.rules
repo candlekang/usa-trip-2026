@@ -180,7 +180,11 @@ service cloud.firestore {
       allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
         && strLen(request.resource.data.text, 200);
-      allow delete: if member() && isOwner(resource.data);
+      // 自己的文可刪；主文作者也可以刪自己那串底下別人的回覆（整串刪除）
+      allow delete: if member() && (isOwner(resource.data)
+        || (resource.data.parentId != null
+            && exists(/databases/$(db)/documents/board/$(resource.data.parentId))
+            && get(/databases/$(db)/documents/board/$(resource.data.parentId)).data.by == uid()));
     }
     // ---------- 表情反應：一人一則一份文件 {postId}_{uid} ----------
     match /reactions/{rid} {
@@ -192,7 +196,9 @@ service cloud.firestore {
         && strLen(request.resource.data.postId, 40)
         && request.resource.data.emojis is list && request.resource.data.emojis.size() <= 20
         && tsOk(request.resource.data.ts);
-      allow delete: if member() && resource.data.by == uid();
+      // 自己的反應可刪；貼文已不存在時任何成員都可清掉殘留
+      allow delete: if member() && (resource.data.by == uid()
+        || !exists(/databases/$(db)/documents/board/$(resource.data.postId)));
     }
 
     // ---------- 其他一律拒絕 ----------

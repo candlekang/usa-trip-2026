@@ -199,11 +199,27 @@ test('幹話板：發文/回覆要 by=自己，200 字上限，只有本人能�
   await assertFails(deleteDoc(doc(bob, 'board', 'p1')));
   await assertFails(updateDoc(doc(alice, 'board', 'p1'), { parentId: 'p2' }));
   await assertSucceeds(updateDoc(doc(alice, 'board', 'p1'), { text: '改過' }));
+  // 整串刪除：主文作者 Alice 可刪 Bob 掛在她文下的回覆；Bob 不能刪 Alice 文下 Alice 自己的東西
+  await assertSucceeds(setDoc(doc(bob, 'board', 'p6'), { by: BOB.uid, text: '再回', ts: 3, parentId: 'p1' }));
+  await assertSucceeds(setDoc(doc(bob, 'board', 'p7'), { by: BOB.uid, text: '獨立文', ts: 4, parentId: null }));
+  await assertFails(deleteDoc(doc(alice, 'board', 'p7')));                 // 別人的主文不能刪
+  await assertSucceeds(deleteDoc(doc(alice, 'board', 'p6')));              // 自己文下別人的回覆可以刪
+  await assertSucceeds(deleteDoc(doc(alice, 'board', 'p2')));
   await assertSucceeds(deleteDoc(doc(alice, 'board', 'p1')));
+});
+
+test('表情反應殘留：貼文刪掉後任何成員可清，貼文還在時只能刪自己的', async () => {
+  const alice = ctx(ALICE), bob = ctx(BOB);
+  await assertSucceeds(setDoc(doc(alice, 'board', 'q1'), { by: ALICE.uid, text: 'q', ts: 1, parentId: null }));
+  await assertSucceeds(setDoc(doc(bob, 'reactions', 'q1_' + BOB.uid), { postId: 'q1', by: BOB.uid, emojis: ['👍'], ts: 1 }));
+  await assertFails(deleteDoc(doc(alice, 'reactions', 'q1_' + BOB.uid)));   // 貼文還在，不能刪別人的反應
+  await assertSucceeds(deleteDoc(doc(alice, 'board', 'q1')));
+  await assertSucceeds(deleteDoc(doc(alice, 'reactions', 'q1_' + BOB.uid))); // 貼文沒了，可清殘留
 });
 
 test('表情反應：文件 id 必須是 postId_自己uid，只能動自己的', async () => {
   const alice = ctx(ALICE), bob = ctx(BOB);
+  await assertSucceeds(setDoc(doc(alice, 'board', 'p1'), { by: ALICE.uid, text: 'p', ts: 1, parentId: null }));
   await assertSucceeds(setDoc(doc(alice, 'reactions', 'p1_' + ALICE.uid), { postId: 'p1', by: ALICE.uid, emojis: ['👍', '🔥'], ts: 1 }));
   await assertFails(setDoc(doc(alice, 'reactions', 'p1_' + BOB.uid), { postId: 'p1', by: BOB.uid, emojis: ['👍'], ts: 1 }));   // 幫別人按
   await assertFails(setDoc(doc(alice, 'reactions', 'p1_' + BOB.uid), { postId: 'p1', by: ALICE.uid, emojis: ['👍'], ts: 1 })); // id 對不上
