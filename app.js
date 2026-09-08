@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-10';
+const BUILD = 'v2-dev-11';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -1044,7 +1044,7 @@ function postHtml(p, isReply, extra = '') {
       ${reactRowHtml(p.id)}
       <div class="post-actions">
         ${!isReply ? '<button data-reply-to="' + esc(p.id) + '">回覆</button>' : ''}
-        ${mine && !deleted ? '<button data-del-post="' + esc(p.id) + '">刪除</button>' : ''}
+        ${mine ? '<button data-del-post="' + esc(p.id) + '">刪除</button>' : ''}
       </div>
       ${extra}
     </div>`;
@@ -1054,6 +1054,9 @@ function renderBoard() {
   const tops = BOARD.filter(p => !p.parentId).sort((a, b) => b.ts - a.ts);
   const replies = {};
   BOARD.filter(p => p.parentId).sort((a, b) => a.ts - b.ts).forEach(p => (replies[p.parentId] ||= []).push(p));
+  // 舊版留下的「（已刪除）」佔位符：沒有回覆的話由作者自動清掉
+  tops.filter(p => p.text === '（已刪除）' && p.by === ME.uid && !(replies[p.id] || []).length)
+      .forEach(p => fire(deleteDoc(doc(db, 'board', p.id))));
   if (!tops.length) { wrap.innerHTML = '<p class="settle-empty">還沒有人講幹話，你先來 🎤</p>'; return; }
   wrap.innerHTML = tops.map(p => {
     const rs = replies[p.id] || [];
