@@ -15,7 +15,7 @@ import {
   onAuthStateChanged, signOut, connectAuthEmulator, signInWithCredential,
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 import {
-  initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
+  initializeFirestore, getFirestore, persistentLocalCache, persistentSingleTabManager,
   connectFirestoreEmulator, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc,
   deleteField, getDoc, getDocFromCache, query, where,
 } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
@@ -30,7 +30,7 @@ const USE_EMU = new URLSearchParams(location.search).has('emu')
   || location.hostname.startsWith('mac-mini');
 let db;
 try {
-  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({ forceOwnership: true }) }) });
 } catch (e) {
   db = getFirestore(app);
 }
@@ -42,7 +42,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-6';
+const BUILD = 'v2-dev-7';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -199,7 +199,7 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
     showScreen('screen-login');
-    toast('連線失敗，請檢查網路後重新整理'); return;
+    toast(e.code === 'deadline-exceeded' ? '連線逾時，請重新整理再試一次' : '連線失敗，請檢查網路後重新整理'); return;
   }
   if (!cfgSnap.exists()) { showScreen('screen-login'); toast('行程資料尚未建立，請通知管理者'); return; }
   applyConfig(cfgSnap.data());
@@ -215,9 +215,15 @@ onAuthStateChanged(auth, async (user) => {
   enterApp();
 });
 
-/* 先問伺服器，離線或逾時就退回本機快取 */
+/* 先問伺服器（最多等 8 秒），離線或逾時就退回本機快取 */
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(Object.assign(new Error('timeout'), { code: 'deadline-exceeded' })), ms);
+    promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}
 async function getDocSmart(ref) {
-  try { return await getDoc(ref); }
+  try { return await withTimeout(getDoc(ref), 8000); }
   catch (e) {
     if (e.code === 'unavailable' || e.code === 'deadline-exceeded') {
       try { return await getDocFromCache(ref); } catch (e2) { throw e; }
