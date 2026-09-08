@@ -42,7 +42,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-4';
+const BUILD = 'v2-dev-5';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -84,7 +84,7 @@ function toast(msg) {
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600);
 }
 function showScreen(id) {
-  ['screen-login', 'screen-denied', 'screen-nick', 'mainApp'].forEach(s => { $(s).style.display = s === id ? '' : 'none'; });
+  ['screen-login', 'screen-inapp', 'screen-denied', 'screen-nick', 'mainApp'].forEach(s => { $(s).style.display = s === id ? '' : 'none'; });
   $('landing').style.display = id === 'mainApp' ? 'none' : '';
   $('tabbar').style.display = id === 'mainApp' ? 'flex' : 'none';
 }
@@ -159,8 +159,33 @@ async function logout() { await signOut(auth); location.reload(); }
 
 getRedirectResult(auth).catch(e => console.warn('redirect result', e));
 
+/* ---- app 內建瀏覽器偵測：LINE / FB / IG 的 WebView 不能做 Google 登入 ---- */
+function inAppBrowser() {
+  const ua = navigator.userAgent || '';
+  if (/\bLine\//i.test(ua)) return 'LINE';
+  if (/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook';
+  if (/Instagram/i.test(ua)) return 'Instagram';
+  if (/MicroMessenger/i.test(ua)) return 'WeChat';
+  return null;
+}
+function externalUrl() {
+  const u = new URL(location.href);
+  u.searchParams.set('openExternalBrowser', '1');   // LINE 官方參數：用外部瀏覽器開
+  return u.toString();
+}
+
 onAuthStateChanged(auth, async (user) => {
-  if (!user) { ME = null; showScreen('screen-login'); return; }
+  if (!user) {
+    ME = null;
+    const iab = inAppBrowser();
+    if (iab) {
+      $('inappName').textContent = iab;
+      $('openExternalBtn').href = externalUrl();
+      showScreen('screen-inapp');
+      return;
+    }
+    showScreen('screen-login'); return;
+  }
   ME = { uid: user.uid, email: user.email || '' };
   // 白名單檢查：讀 config/itinerary，被拒 = 不在名單
   let cfgSnap;
