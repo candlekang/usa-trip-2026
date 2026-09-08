@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const PROJECT = 'ustrip2026-76157';
+const PROJECT = 'ron-usa-trip-2026';
 const args = new Set(process.argv.slice(2));
 initializeApp({ credential: applicationDefault(), projectId: PROJECT });
 const db = getFirestore();
