@@ -110,13 +110,15 @@ service cloud.firestore {
       allow delete: if member() && isOwner(resource.data);
     }
 
-    // ---------- 每日心得 ----------
+    // ---------- 每日心得（文字或貼圖至少一個）----------
     match /journal/{id} {
       allow read: if member();
       allow create: if member() && isOwner(request.resource.data)
-        && request.resource.data.keys().hasOnly(['dayId', 'by', 'text', 'ts'])
+        && request.resource.data.keys().hasOnly(['dayId', 'by', 'text', 'ts', 'stickerId'])
         && strLen(request.resource.data.dayId, 10)
-        && strLen(request.resource.data.text, 80)
+        && (request.resource.data.text == null || strLen(request.resource.data.text, 80))
+        && (request.resource.data.get('stickerId', null) == null || strLen(request.resource.data.stickerId, 40))
+        && (request.resource.data.text != null || request.resource.data.get('stickerId', null) != null)
         && tsOk(request.resource.data.ts);
       allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])

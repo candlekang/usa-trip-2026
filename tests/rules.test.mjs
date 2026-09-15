@@ -135,10 +135,13 @@ test('留言：建立要 by=自己，只有本人能改文字或刪除', async (
   await assertSucceeds(deleteDoc(doc(alice, 'comments', 'c1')));
 });
 
-test('心得：同留言規則，80 字上限', async () => {
+test('心得：同留言規則，80 字上限；可純貼圖，但不能兩者皆空', async () => {
   const alice = ctx(ALICE), bob = ctx(BOB);
   await assertSucceeds(setDoc(doc(alice, 'journal', 'j1'), { dayId: 'd1', by: ALICE.uid, text: 'good', ts: 1 }));
   await assertFails(setDoc(doc(alice, 'journal', 'j2'), { dayId: 'd1', by: ALICE.uid, text: 'x'.repeat(81), ts: 1 }));
+  await assertSucceeds(setDoc(doc(alice, 'journal', 'j3'), { dayId: 'd1', by: ALICE.uid, text: null, ts: 2, stickerId: 's1' }));
+  await assertSucceeds(setDoc(doc(alice, 'journal', 'j4'), { dayId: 'd1', by: ALICE.uid, text: '配字', ts: 3, stickerId: 's1' }));
+  await assertFails(setDoc(doc(alice, 'journal', 'j5'), { dayId: 'd1', by: ALICE.uid, text: null, ts: 4, stickerId: null }));
   await assertFails(updateDoc(doc(bob, 'journal', 'j1'), { text: 'pwned' }));
   await assertFails(deleteDoc(doc(bob, 'journal', 'j1')));
 });

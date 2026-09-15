@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-13';
+const BUILD = 'v2-dev-14';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -66,7 +66,7 @@ let REACTIONS = {};       // postId -> { uid: [emoji...] }
 let replyingTo = null;    // 正在回覆的 postId
 let emojiTarget = null;   // 表情選擇器要套用到的 postId
 let STICKERS = {};        // stickerId -> {by, data, ts}
-let stickerTarget = null; // 貼圖要發成主文(null)或某文的回覆(postId)
+let stickerTarget = null; // {kind:'board', parentId} 或 {kind:'journal', dayId}
 let stickerUnsub = null;  // 貼圖庫延遲監聽
 let PERSONAL = [];        // localStorage（個人，不同步）
 
@@ -333,7 +333,7 @@ function enterApp() {
   renderAll();
   initTabs(); initLightbox(); initSettleModal(); initOfflineBanner();
   $('boardSendBtn').addEventListener('click', () => sendPost(null));
-  $('stickerOpenBtn').addEventListener('click', () => openStickerPop(null));
+  $('stickerOpenBtn').addEventListener('click', () => openStickerPop({ kind: 'board', parentId: null }));
   $('stickerPopClose').addEventListener('click', closeStickerPop);
   $('stickerUploadInput').addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return; e.target.value = '';
@@ -490,6 +490,7 @@ function renderDayList() {
       </div>`;
     }).join('');
 
+    if (!stickerUnsub && (JOURNAL[d.id] || []).some(j => j.stickerId)) ensureStickerListener();
     const journalHtml = (JOURNAL[d.id] || []).map((j, i) => {
       if (editingJournal.has(j.id)) {
         return `<div class="sticky-note c${i % 3} editing">
@@ -501,8 +502,9 @@ function renderDayList() {
         </div>`;
       }
       const mine = j.by === ME.uid;
-      return '<div class="sticky-note c' + (i % 3) + '"><b>' + esc(nameOf(j.by)) + '</b>：' + esc(j.text)
-        + (mine ? ' <button class="mini-btn" data-edit-journal="' + esc(j.id) + '">✏️</button><button class="mini-btn" data-del-journal="' + esc(j.id) + '">🗑</button>' : '')
+      return '<div class="sticky-note c' + (i % 3) + '"><b>' + esc(nameOf(j.by)) + '</b>：' + esc(j.text || '')
+        + (j.stickerId ? stickerImgHtml(j.stickerId) : '')
+        + (mine ? ' <button class="mini-btn" data-edit-journal="' + esc(j.id) + '"' + (j.text ? '' : ' hidden') + '>✏️</button><button class="mini-btn" data-del-journal="' + esc(j.id) + '">🗑</button>' : '')
         + '</div>';
     }).join('');
     const isOpen = openDays.has(d.id);
@@ -526,6 +528,7 @@ function renderDayList() {
           <div class="journal-form" style="margin-top:8px;">
             <textarea placeholder="留一句今天的心得..." data-journal="${esc(d.id)}" maxlength="80"></textarea>
             <button data-journal-send="${esc(d.id)}">送出</button>
+            <button type="button" class="sticker-open-btn" data-sticker-journal="${esc(d.id)}">🐱</button>
           </div>
         </div>
         <div class="photo-box">
@@ -619,6 +622,7 @@ function attachDayListeners() {
     openComments.add(id);
     fire(setDoc(doc(db, 'comments', newId('comments')), { itemId: id, by: ME.uid, text, ts: Date.now() }));
   });
+  on('[data-sticker-journal]', 'click', (el, e) => { e.stopPropagation(); openStickerPop({ kind: 'journal', dayId: el.dataset.stickerJournal }); });
   on('[data-journal-send]', 'click', (el, e) => {
     e.stopPropagation();
     const d = el.dataset.journalSend;
@@ -1106,7 +1110,7 @@ function attachBoardListeners() {
   on('[data-react-more]', 'click', (el) => openEmojiPop(el.dataset.reactMore));
   on('[data-reply-to]', 'click', (el) => { replyingTo = replyingTo === el.dataset.replyTo ? null : el.dataset.replyTo; renderBoard(); const ta = document.querySelector('textarea[data-reply-input]'); if (ta) ta.focus(); });
   on('[data-reply-send]', 'click', (el) => sendPost(el.dataset.replySend));
-  on('[data-sticker-reply]', 'click', (el) => openStickerPop(el.dataset.stickerReply));
+  on('[data-sticker-reply]', 'click', (el) => openStickerPop({ kind: 'board', parentId: el.dataset.stickerReply }));
   on('[data-del-post]', 'click', (el) => {
     const id = el.dataset.delPost;
     const replies = BOARD.filter(p => p.parentId === id);
@@ -1165,7 +1169,7 @@ function renderStickerGrid() {
     + (ids.length ? '' : '<div class="sticker-empty">貼圖庫是空的，按＋上傳第一張</div>');
   grid.querySelectorAll('[data-send-sticker]').forEach(el => el.addEventListener('click', (e) => {
     if (e.target.closest('.sdel')) return;
-    sendPost(stickerTarget, el.dataset.sendSticker);
+    sendSticker(el.dataset.sendSticker);
     closeStickerPop();
   }));
   grid.querySelectorAll('[data-del-sticker]').forEach(el => el.addEventListener('click', (e) => {
@@ -1174,6 +1178,17 @@ function renderStickerGrid() {
   }));
   const add = $('stickerAddBtn');
   if (add) add.addEventListener('click', () => $('stickerUploadInput').click());
+}
+function sendSticker(stickerId) {
+  const t = stickerTarget || { kind: 'board', parentId: null };
+  if (t.kind === 'journal') {
+    const ta = document.querySelector('textarea[data-journal="' + CSS.escape(t.dayId) + '"]');
+    const text = ta ? ta.value.trim().slice(0, 80) : '';
+    if (ta) { ta.value = ''; ta.blur(); }
+    fire(setDoc(doc(db, 'journal', newId('journal')), { dayId: t.dayId, by: ME.uid, text: text || null, ts: Date.now(), stickerId }));
+    return;
+  }
+  sendPost(t.parentId, stickerId);
 }
 function openStickerPop(target) {
   stickerTarget = target || null;
