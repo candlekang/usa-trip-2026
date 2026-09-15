@@ -358,6 +358,22 @@
   .emoji-pop.open{display:block;}
   .emoji-pop emoji-picker{--num-columns:8;--emoji-size:1.5rem;height:320px;width:min(92vw,360px);}
   .emoji-pop .ep-close{position:absolute;top:6px;right:8px;z-index:1;background:none;border:none;font-size:18px;color:var(--ink-soft);}
+
+  /* ---- 貼圖 ---- */
+  .sticker-img{display:block;max-width:130px;max-height:130px;background:#fff;border-radius:12px;padding:4px;margin-top:4px;}
+  .reply .sticker-img{max-width:96px;max-height:96px;}
+  .compose-btns{display:flex;flex-direction:column;gap:6px;}
+  .sticker-open-btn{padding:0 12px;border:2px solid var(--outline);border-radius:12px;background:var(--paper2);font-size:16px;min-height:34px;}
+  .sticker-pop{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:70;display:none;background:var(--paper);border:2px solid var(--outline);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:12px;width:min(92vw,360px);}
+  .sticker-pop.open{display:block;}
+  .sticker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:300px;overflow-y:auto;}
+  .sticker-cell{position:relative;background:#fff;border-radius:10px;border:1.5px solid var(--line);padding:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;}
+  .sticker-cell img{max-width:100%;max-height:100%;}
+  .sticker-cell .sdel{position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;line-height:18px;padding:0;}
+  .sticker-cell.add{background:var(--paper2);font-size:22px;color:var(--ink-soft);border-style:dashed;}
+  .sticker-pop .sp-head{display:flex;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--ink-soft);}
+  .sticker-pop .sp-close{margin-left:auto;background:none;border:none;font-size:16px;color:var(--ink-soft);}
+  .sticker-empty{font-size:12.5px;color:var(--ink-soft);padding:10px 0;}
 </style>
 </head>
 <body>
@@ -485,7 +501,10 @@
       <div class="section-title">💬 幹話板</div>
       <div class="compose">
         <textarea id="boardInput" placeholder="想說什麼就說…（200 字內）" maxlength="200"></textarea>
-        <button id="boardSendBtn">發文</button>
+        <div class="compose-btns">
+          <button id="boardSendBtn">發文</button>
+          <button type="button" class="sticker-open-btn" id="stickerOpenBtn" title="貼圖">🐱</button>
+        </div>
       </div>
       <div id="boardList"></div>
     </div>
@@ -525,6 +544,11 @@
 </div>
 <div id="toast"></div>
 <div class="emoji-pop" id="emojiPop"><button class="ep-close" id="emojiPopClose">✕</button></div>
+<div class="sticker-pop" id="stickerPop">
+  <div class="sp-head">🐱 貼圖 <span style="font-weight:400;margin-left:6px;">點一下直接送出</span><button class="sp-close" id="stickerPopClose">✕</button></div>
+  <div class="sticker-grid" id="stickerGrid"></div>
+  <input type="file" accept="image/*" style="display:none" id="stickerUploadInput">
+</div>
 <script type="module" src="./app.js"></script>
 <script>
   // 看門狗：15 秒內主程式沒載入完成（SDK 被擋、網路異常），給使用者一句話而不是無聲卡死

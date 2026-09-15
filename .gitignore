@@ -5,3 +5,4 @@ ui-debug.log
 .firebase/
 *.local
 data/*.local.*
+data/stickers/

@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-11';
+const BUILD = 'v2-dev-12';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -65,6 +65,9 @@ let BOARD = [];           // [{id, by, text, ts, parentId}]
 let REACTIONS = {};       // postId -> { uid: [emoji...] }
 let replyingTo = null;    // 正在回覆的 postId
 let emojiTarget = null;   // 表情選擇器要套用到的 postId
+let STICKERS = {};        // stickerId -> {by, data, ts}
+let stickerTarget = null; // 貼圖要發成主文(null)或某文的回覆(postId)
+let stickerUnsub = null;  // 貼圖庫延遲監聽
 let PERSONAL = [];        // localStorage（個人，不同步）
 
 let editingExpenseId = null;
@@ -330,6 +333,19 @@ function enterApp() {
   renderAll();
   initTabs(); initLightbox(); initSettleModal(); initOfflineBanner();
   $('boardSendBtn').addEventListener('click', () => sendPost(null));
+  $('stickerOpenBtn').addEventListener('click', () => openStickerPop(null));
+  $('stickerPopClose').addEventListener('click', closeStickerPop);
+  $('stickerUploadInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; if (!file) return; e.target.value = '';
+    try {
+      const dataUrl = await compressImage(file, 240, 0.8, 130000);
+      fire(setDoc(doc(db, 'stickers', newId('stickers')), { by: ME.uid, data: dataUrl, ts: Date.now() }));
+    } catch (err) { toast('這張圖沒辦法當貼圖，換一張試試看？'); }
+  });
+  document.addEventListener('click', (e) => {
+    const pop = $('stickerPop');
+    if (pop.classList.contains('open') && !pop.contains(e.target) && !e.target.closest('.sticker-open-btn')) closeStickerPop();
+  });
   $('emojiPopClose').addEventListener('click', closeEmojiPop);
   $('personalAddBtn').addEventListener('click', addPersonalItem);
   $('personalInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPersonalItem(); });
@@ -341,6 +357,15 @@ function renderAll() {
   renderTopbar(); renderDayList(); renderRegions(); renderInfo(); renderChecklist();
   renderPersonal(); renderGuide(); renderMembers(); renderExpenseForm(); renderExpenseList();
   renderSettlement(); renderRecap(); renderBoard();
+}
+
+/* 貼圖庫：第一次進幹話板才開始監聽 */
+function ensureStickerListener() {
+  if (stickerUnsub) return;
+  stickerUnsub = onSnapshot(collection(db, 'stickers'), s => {
+    STICKERS = {}; s.forEach(d => { STICKERS[d.id] = d.data(); });
+    requestRender(renderBoard, renderStickerGrid);
+  });
 }
 
 /* 照片：展開某一天才開始監聽那一天 */
@@ -1040,7 +1065,8 @@ function postHtml(p, isReply, extra = '') {
   return `
     <div class="${isReply ? 'reply' : 'post'}" id="post-${esc(p.id)}">
       <div class="post-head"><b>${esc(nameOf(p.by))}</b><span class="pt">${esc(fmtTime(p.ts))}</span></div>
-      <div class="post-text ${deleted ? 'deleted' : ''}">${esc(p.text)}</div>
+      ${p.stickerId ? stickerImgHtml(p.stickerId) : ''}
+      ${p.text ? '<div class="post-text ' + (deleted ? 'deleted' : '') + '">' + esc(p.text) + '</div>' : ''}
       ${reactRowHtml(p.id)}
       <div class="post-actions">
         ${!isReply ? '<button data-reply-to="' + esc(p.id) + '">回覆</button>' : ''}
@@ -1064,6 +1090,7 @@ function renderBoard() {
       <div class="reply-form">
         <textarea data-reply-input="${esc(p.id)}" placeholder="回覆…" maxlength="200"></textarea>
         <button data-reply-send="${esc(p.id)}">送出</button>
+        <button type="button" class="sticker-open-btn" data-sticker-reply="${esc(p.id)}">🐱</button>
       </div>` : '';
     const extra = (rs.length ? '<div class="replies">' + rs.map(r => postHtml(r, true)).join('') + '</div>' : '') + replyForm;
     return postHtml(p, false, extra);
@@ -1076,6 +1103,7 @@ function attachBoardListeners() {
   on('[data-react-more]', 'click', (el) => openEmojiPop(el.dataset.reactMore));
   on('[data-reply-to]', 'click', (el) => { replyingTo = replyingTo === el.dataset.replyTo ? null : el.dataset.replyTo; renderBoard(); const ta = document.querySelector('textarea[data-reply-input]'); if (ta) ta.focus(); });
   on('[data-reply-send]', 'click', (el) => sendPost(el.dataset.replySend));
+  on('[data-sticker-reply]', 'click', (el) => openStickerPop(el.dataset.stickerReply));
   on('[data-del-post]', 'click', (el) => {
     const id = el.dataset.delPost;
     const replies = BOARD.filter(p => p.parentId === id);
@@ -1097,14 +1125,16 @@ async function deleteThread(id, replies) {
     toast(e.code === 'permission-denied' ? '沒有權限刪這串' : '刪除失敗，再試一次看看？');
   }
 }
-function sendPost(parentId) {
+function sendPost(parentId, stickerId) {
   const ta = parentId ? document.querySelector('textarea[data-reply-input="' + CSS.escape(parentId) + '"]') : $('boardInput');
-  if (!ta) return;
-  const text = ta.value.trim().slice(0, 200);
-  if (!text) return;
-  ta.value = ''; ta.blur();
+  const text = ta ? ta.value.trim().slice(0, 200) : '';
+  if (!text && !stickerId) return;
+  if (ta) { ta.value = ''; ta.blur(); }
   if (parentId) replyingTo = null;
-  fire(setDoc(doc(db, 'board', newId('board')), { by: ME.uid, text, ts: Date.now(), parentId: parentId || null }));
+  fire(setDoc(doc(db, 'board', newId('board')), {
+    by: ME.uid, text: text || null, ts: Date.now(), parentId: parentId || null,
+    stickerId: stickerId || null,
+  }));
 }
 function toggleReaction(postId, emoji) {
   const cur = new Set((REACTIONS[postId] || {})[ME.uid] || []);
@@ -1113,6 +1143,43 @@ function toggleReaction(postId, emoji) {
   if (cur.size) fire(setDoc(ref, { postId, by: ME.uid, emojis: [...cur].slice(0, 20), ts: Date.now() }));
   else fire(deleteDoc(ref));
 }
+/* ===================== 貼圖盤 ===================== */
+function stickerImgHtml(id) {
+  const st = STICKERS[id];
+  if (!st) return '<div class="post-text deleted">（貼圖已被刪除）</div>';
+  return '<img class="sticker-img" src="' + esc(st.data) + '" alt="貼圖">';
+}
+function renderStickerGrid() {
+  const grid = $('stickerGrid');
+  if (!grid) return;
+  const ids = Object.keys(STICKERS).sort((a, b) => (STICKERS[a].ts || 0) - (STICKERS[b].ts || 0));
+  grid.innerHTML = ids.map(id => `
+    <button type="button" class="sticker-cell" data-send-sticker="${esc(id)}">
+      <img src="${esc(STICKERS[id].data)}" alt="">
+      ${STICKERS[id].by === ME.uid ? '<span class="sdel" data-del-sticker="' + esc(id) + '">✕</span>' : ''}
+    </button>`).join('')
+    + '<button type="button" class="sticker-cell add" id="stickerAddBtn" title="上傳新貼圖">＋</button>'
+    + (ids.length ? '' : '<div class="sticker-empty">貼圖庫是空的，按＋上傳第一張</div>');
+  grid.querySelectorAll('[data-send-sticker]').forEach(el => el.addEventListener('click', (e) => {
+    if (e.target.closest('.sdel')) return;
+    sendPost(stickerTarget, el.dataset.sendSticker);
+    closeStickerPop();
+  }));
+  grid.querySelectorAll('[data-del-sticker]').forEach(el => el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (confirm('把這張貼圖從全團的貼圖庫移除？已發出的文會顯示「貼圖已被刪除」。')) fire(deleteDoc(doc(db, 'stickers', el.dataset.delSticker)));
+  }));
+  const add = $('stickerAddBtn');
+  if (add) add.addEventListener('click', () => $('stickerUploadInput').click());
+}
+function openStickerPop(target) {
+  stickerTarget = target || null;
+  ensureStickerListener();
+  renderStickerGrid();
+  $('stickerPop').classList.add('open');
+}
+function closeStickerPop() { $('stickerPop').classList.remove('open'); stickerTarget = null; }
+
 /* 表情選擇器：第一次點才從 CDN 載入 emoji-picker-element */
 let pickerLoaded = false;
 async function openEmojiPop(postId) {
@@ -1145,6 +1212,7 @@ function initTabs() {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     btn.classList.add('active');
     $(btn.dataset.view).classList.add('active');
+    if (btn.dataset.view === 'view-board') ensureStickerListener();
     window.scrollTo(0, 0);
   }));
 }

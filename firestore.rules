@@ -169,12 +169,27 @@ service cloud.firestore {
         && tsOk(request.resource.data.ts);
     }
 
-    // ---------- 幹話板：貼文 / 回覆 ----------
+    // ---------- 貼圖庫（全團共用；匯入或團員上傳）----------
+    match /stickers/{id} {
+      allow read: if member();
+      allow create: if member()
+        && request.resource.data.keys().hasOnly(['by', 'data', 'ts'])
+        && request.resource.data.by == uid()
+        && request.resource.data.data is string
+        && imageOk(request.resource.data.data)
+        && tsOk(request.resource.data.ts);
+      allow update: if false;
+      allow delete: if member() && isOwner(resource.data);
+    }
+
+    // ---------- 幹話板：貼文 / 回覆（文字或貼圖至少一個）----------
     match /board/{id} {
       allow read: if member();
       allow create: if member() && isOwner(request.resource.data)
-        && request.resource.data.keys().hasOnly(['by', 'text', 'ts', 'parentId'])
-        && strLen(request.resource.data.text, 200)
+        && request.resource.data.keys().hasOnly(['by', 'text', 'ts', 'parentId', 'stickerId'])
+        && (request.resource.data.text == null || strLen(request.resource.data.text, 200))
+        && (request.resource.data.get('stickerId', null) == null || strLen(request.resource.data.stickerId, 40))
+        && (request.resource.data.text != null || request.resource.data.get('stickerId', null) != null)
         && tsOk(request.resource.data.ts)
         && (request.resource.data.parentId == null || strLen(request.resource.data.parentId, 40));
       allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)

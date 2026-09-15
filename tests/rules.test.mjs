@@ -230,6 +230,26 @@ test('表情反應：文件 id 必須是 postId_自己uid，只能動自己的',
   await assertSucceeds(deleteDoc(doc(alice, 'reactions', 'p1_' + ALICE.uid)));
 });
 
+// ---------- 貼圖 ----------
+test('貼圖庫：上傳要 by=自己且是 data:image，只有本人能刪、不能改', async () => {
+  const alice = ctx(ALICE), bob = ctx(BOB);
+  const img = 'data:image/jpeg;base64,' + 'A'.repeat(500);
+  await assertSucceeds(setDoc(doc(alice, 'stickers', 's1'), { by: ALICE.uid, data: img, ts: 1 }));
+  await assertFails(setDoc(doc(alice, 'stickers', 's2'), { by: BOB.uid, data: img, ts: 1 }));           // 冒名
+  await assertFails(setDoc(doc(alice, 'stickers', 's3'), { by: ALICE.uid, data: 'https://x/a.png', ts: 1 })); // 非 data:image
+  await assertFails(updateDoc(doc(alice, 'stickers', 's1'), { data: img }));                            // 不能改
+  await assertFails(deleteDoc(doc(bob, 'stickers', 's1')));                                             // 他人刪
+  await assertSucceeds(deleteDoc(doc(alice, 'stickers', 's1')));
+});
+
+test('幹話板貼圖文：text 或 stickerId 至少一個，純貼圖可發', async () => {
+  const alice = ctx(ALICE);
+  await assertSucceeds(setDoc(doc(alice, 'board', 'sb1'), { by: ALICE.uid, text: null, ts: 1, parentId: null, stickerId: 's1' }));
+  await assertSucceeds(setDoc(doc(alice, 'board', 'sb2'), { by: ALICE.uid, text: '配字', ts: 2, parentId: 'sb1', stickerId: 's1' }));
+  await assertFails(setDoc(doc(alice, 'board', 'sb3'), { by: ALICE.uid, text: null, ts: 3, parentId: null, stickerId: null })); // 兩個都空
+  await assertFails(setDoc(doc(alice, 'board', 'sb4'), { by: ALICE.uid, text: null, ts: 4, parentId: null }));                  // 同上（無欄位）
+});
+
 // ---------- 未定義路徑 ----------
 test('未定義的 collection 一律拒絕', async () => {
   const alice = ctx(ALICE);
