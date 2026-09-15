@@ -220,7 +220,7 @@ test('表情反應殘留：貼文刪掉後任何成員可清，貼文還在時�
 test('表情反應：文件 id 必須是 postId_自己uid，只能動自己的', async () => {
   const alice = ctx(ALICE), bob = ctx(BOB);
   await assertSucceeds(setDoc(doc(alice, 'board', 'p1'), { by: ALICE.uid, text: 'p', ts: 1, parentId: null }));
-  await assertSucceeds(setDoc(doc(alice, 'reactions', 'p1_' + ALICE.uid), { postId: 'p1', by: ALICE.uid, emojis: ['👍', '🔥'], ts: 1 }));
+  await assertSucceeds(setDoc(doc(alice, 'reactions', 'p1_' + ALICE.uid), { postId: 'p1', by: ALICE.uid, emojis: ['👍', '🔥', 'sticker:abc123'], ts: 1 }));
   await assertFails(setDoc(doc(alice, 'reactions', 'p1_' + BOB.uid), { postId: 'p1', by: BOB.uid, emojis: ['👍'], ts: 1 }));   // 幫別人按
   await assertFails(setDoc(doc(alice, 'reactions', 'p1_' + BOB.uid), { postId: 'p1', by: ALICE.uid, emojis: ['👍'], ts: 1 })); // id 對不上
   await assertFails(setDoc(doc(alice, 'reactions', 'p2_' + ALICE.uid), { postId: 'p1', by: ALICE.uid, emojis: ['👍'], ts: 1 })); // postId 對不上 id

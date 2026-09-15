@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-12';
+const BUILD = 'v2-dev-13';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -1056,7 +1056,10 @@ function reactRowHtml(postId) {
     const uids = sum[e] || [];
     if (!uids.length && !QUICK_EMOJI.includes(e)) return '';
     const title = uids.map(nameOf).join('、');
-    return `<button type="button" class="react-chip ${mine.has(e) ? 'on' : ''}" data-react="${esc(postId)}" data-emoji="${esc(e)}" title="${esc(title)}">${esc(e)}${uids.length ? '<span class="cnt">' + uids.length + '</span>' : ''}</button>`;
+    const face = e.startsWith('sticker:')
+      ? (STICKERS[e.slice(8)] ? '<img class="react-sticker" src="' + esc(STICKERS[e.slice(8)].data) + '" alt="貼圖">' : '🐱')
+      : esc(e);
+    return `<button type="button" class="react-chip ${mine.has(e) ? 'on' : ''}" data-react="${esc(postId)}" data-emoji="${esc(e)}" title="${esc(title)}">${face}${uids.length ? '<span class="cnt">' + uids.length + '</span>' : ''}</button>`;
   }).join('') + `<button type="button" class="react-chip more" data-react-more="${esc(postId)}" title="更多表情">＋</button></div>`;
 }
 function postHtml(p, isReply, extra = '') {
@@ -1182,8 +1185,18 @@ function closeStickerPop() { $('stickerPop').classList.remove('open'); stickerTa
 
 /* 表情選擇器：第一次點才從 CDN 載入 emoji-picker-element */
 let pickerLoaded = false;
+function renderReactionStickerStrip() {
+  const strip = $('emojiStickerStrip');
+  const ids = Object.keys(STICKERS).sort((a, b) => (STICKERS[a].ts || 0) - (STICKERS[b].ts || 0));
+  strip.innerHTML = ids.map(id => `<button type="button" data-react-sticker="${esc(id)}"><img src="${esc(STICKERS[id].data)}" alt=""></button>`).join('');
+  strip.querySelectorAll('[data-react-sticker]').forEach(el => el.addEventListener('click', () => {
+    if (emojiTarget) toggleReaction(emojiTarget, 'sticker:' + el.dataset.reactSticker);
+    closeEmojiPop();
+  }));
+}
 async function openEmojiPop(postId) {
   emojiTarget = postId;
+  renderReactionStickerStrip();
   const pop = $('emojiPop');
   if (!pickerLoaded) {
     try {
