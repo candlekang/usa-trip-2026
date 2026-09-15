@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-14';
+const BUILD = 'v2-dev-16';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -327,7 +327,7 @@ function enterApp() {
   }));
   unsubs.push(onSnapshot(collection(db, 'reactions'), s => {
     REACTIONS = {}; s.forEach(d => { const r = d.data(); (REACTIONS[r.postId] ||= {})[r.by] = r.emojis || []; });
-    requestRender(renderBoard);
+    requestRender(renderBoard, renderDayList);
   }));
 
   renderAll();
@@ -364,7 +364,7 @@ function ensureStickerListener() {
   if (stickerUnsub) return;
   stickerUnsub = onSnapshot(collection(db, 'stickers'), s => {
     STICKERS = {}; s.forEach(d => { STICKERS[d.id] = d.data(); });
-    requestRender(renderBoard, renderStickerGrid);
+    requestRender(renderBoard, renderDayList, renderStickerGrid, renderReactionStickerStrip);
   });
 }
 
@@ -490,7 +490,8 @@ function renderDayList() {
       </div>`;
     }).join('');
 
-    if (!stickerUnsub && (JOURNAL[d.id] || []).some(j => j.stickerId)) ensureStickerListener();
+    if (!stickerUnsub && (JOURNAL[d.id] || []).some(j => j.stickerId
+        || Object.values(REACTIONS[j.id] || {}).some(list => list.some(e => e.startsWith('sticker:'))))) ensureStickerListener();
     const journalHtml = (JOURNAL[d.id] || []).map((j, i) => {
       if (editingJournal.has(j.id)) {
         return `<div class="sticky-note c${i % 3} editing">
@@ -505,6 +506,7 @@ function renderDayList() {
       return '<div class="sticky-note c' + (i % 3) + '"><b>' + esc(nameOf(j.by)) + '</b>：' + esc(j.text || '')
         + (j.stickerId ? stickerImgHtml(j.stickerId) : '')
         + (mine ? ' <button class="mini-btn" data-edit-journal="' + esc(j.id) + '"' + (j.text ? '' : ' hidden') + '>✏️</button><button class="mini-btn" data-del-journal="' + esc(j.id) + '">🗑</button>' : '')
+        + reactRowHtml(j.id)
         + '</div>';
     }).join('');
     const isOpen = openDays.has(d.id);
@@ -623,6 +625,8 @@ function attachDayListeners() {
     fire(setDoc(doc(db, 'comments', newId('comments')), { itemId: id, by: ME.uid, text, ts: Date.now() }));
   });
   on('[data-sticker-journal]', 'click', (el, e) => { e.stopPropagation(); openStickerPop({ kind: 'journal', dayId: el.dataset.stickerJournal }); });
+  on('.sticky-note [data-react]', 'click', (el, e) => { e.stopPropagation(); toggleReaction(el.dataset.react, el.dataset.emoji); });
+  on('.sticky-note [data-react-more]', 'click', (el, e) => { e.stopPropagation(); openEmojiPop(el.dataset.reactMore); });
   on('[data-journal-send]', 'click', (el, e) => {
     e.stopPropagation();
     const d = el.dataset.journalSend;
@@ -655,7 +659,12 @@ function attachDayListeners() {
     fire(updateDoc(doc(db, 'journal', jId), { text }));
     renderDayList();
   });
-  on('[data-del-journal]', 'click', (el, e) => { e.stopPropagation(); fire(deleteDoc(doc(db, 'journal', el.dataset.delJournal))); });
+  on('[data-del-journal]', 'click', (el, e) => {
+    e.stopPropagation();
+    const jId = el.dataset.delJournal;
+    fire(deleteDoc(doc(db, 'journal', jId)));
+    Object.keys(REACTIONS[jId] || {}).forEach(uid => deleteDoc(doc(db, 'reactions', jId + '_' + uid)).catch(() => {}));
+  });
   on('.journal-box, .comment-panel, .exp-body', 'click', (el, e) => e.stopPropagation());
 
   on('[data-photo-add]', 'click', (el, e) => { e.stopPropagation(); document.querySelector('input[data-photo-input="' + CSS.escape(el.dataset.photoAdd) + '"]').click(); });
@@ -1106,8 +1115,8 @@ function renderBoard() {
 }
 function attachBoardListeners() {
   const on = (sel, ev, fn) => document.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
-  on('[data-react]', 'click', (el) => toggleReaction(el.dataset.react, el.dataset.emoji));
-  on('[data-react-more]', 'click', (el) => openEmojiPop(el.dataset.reactMore));
+  on('#boardList [data-react]', 'click', (el) => toggleReaction(el.dataset.react, el.dataset.emoji));
+  on('#boardList [data-react-more]', 'click', (el) => openEmojiPop(el.dataset.reactMore));
   on('[data-reply-to]', 'click', (el) => { replyingTo = replyingTo === el.dataset.replyTo ? null : el.dataset.replyTo; renderBoard(); const ta = document.querySelector('textarea[data-reply-input]'); if (ta) ta.focus(); });
   on('[data-reply-send]', 'click', (el) => sendPost(el.dataset.replySend));
   on('[data-sticker-reply]', 'click', (el) => openStickerPop({ kind: 'board', parentId: el.dataset.stickerReply }));
@@ -1211,6 +1220,7 @@ function renderReactionStickerStrip() {
 }
 async function openEmojiPop(postId) {
   emojiTarget = postId;
+  ensureStickerListener();
   renderReactionStickerStrip();
   const pop = $('emojiPop');
   if (!pickerLoaded) {
