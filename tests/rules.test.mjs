@@ -233,6 +233,17 @@ test('表情反應：文件 id 必須是 postId_自己uid，只能動自己的',
   await assertSucceeds(deleteDoc(doc(alice, 'reactions', 'p1_' + ALICE.uid)));
 });
 
+// ---------- 行程覆蓋 ----------
+test('行程覆蓋：白名單成員可寫，updatedBy 必須是自己，40 項上限', async () => {
+  const alice = ctx(ALICE), eve = ctx(EVE);
+  const items = [{ time: '08:00', title: 'République', badge: ['fav'], links: [{ l: 'République', u: 'https://maps.example' }] }];
+  await assertSucceeds(setDoc(doc(alice, 'itinerary_days', 'd2'), { items, updatedBy: ALICE.uid, ts: 1 }));
+  await assertFails(setDoc(doc(alice, 'itinerary_days', 'd2'), { items, updatedBy: BOB.uid, ts: 1 }));   // 冒名
+  await assertFails(setDoc(doc(alice, 'itinerary_days', 'd2'), { items, updatedBy: ALICE.uid, ts: 1, extra: 1 }));
+  await assertFails(setDoc(doc(alice, 'itinerary_days', 'd2'), { items: Array(41).fill({ title: 'x' }), updatedBy: ALICE.uid, ts: 1 }));
+  await assertFails(setDoc(doc(eve, 'itinerary_days', 'd2'), { items, updatedBy: EVE.uid, ts: 1 }));     // 非白名單
+});
+
 // ---------- 貼圖 ----------
 test('貼圖庫：上傳要 by=自己且是 data:image，只有本人能刪、不能改', async () => {
   const alice = ctx(ALICE), bob = ctx(BOB);

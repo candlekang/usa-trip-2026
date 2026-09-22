@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-16';
+const BUILD = 'v2-dev-17';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -68,6 +68,9 @@ let emojiTarget = null;   // 表情選擇器要套用到的 postId
 let STICKERS = {};        // stickerId -> {by, data, ts}
 let stickerTarget = null; // {kind:'board', parentId} 或 {kind:'journal', dayId}
 let stickerUnsub = null;  // 貼圖庫延遲監聽
+let DAY_OVERRIDES = {};   // dayId -> {items, updatedBy, ts}（團員編輯的行程，蓋過 config）
+let editingDay = null;    // 正在編輯行程的 dayId
+let editorItems = [];     // 編輯中的工作陣列
 let PERSONAL = [];        // localStorage（個人，不同步）
 
 let editingExpenseId = null;
@@ -110,6 +113,7 @@ function fire(promise, failMsg) {
 /* ---- 畫面更新：有人在打字就先暫存，失焦再套用 ---- */
 const pendingRenders = new Set();
 function isTypingActive() {
+  if (editingDay !== null) return true;   // 行程編輯中：所有外部更新先暫存
   const el = document.activeElement;
   return !!(el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && ['text', 'number', 'search'].includes(el.type))));
 }
@@ -321,6 +325,10 @@ function enterApp() {
     NOTES = {}; s.forEach(d => { NOTES[d.id] = d.data().text || ''; });
     requestRender(renderInfo);
   }));
+  unsubs.push(onSnapshot(collection(db, 'itinerary_days'), s => {
+    DAY_OVERRIDES = {}; s.forEach(d => { DAY_OVERRIDES[d.id] = d.data(); });
+    requestRender(renderTopbar, renderDayList, renderMembers, renderRecap);
+  }));
   unsubs.push(onSnapshot(collection(db, 'board'), s => {
     BOARD = []; s.forEach(d => BOARD.push({ id: d.id, ...d.data() }));
     requestRender(renderBoard);
@@ -388,9 +396,13 @@ function fmtCountdown() {
   if (now <= TRIP_END) return '旅行中 · Day ' + (Math.floor((now - TRIP_START) / 86400000) + 1);
   return '旅程已結束 🎉';
 }
+function dayItems(d) {
+  const ov = DAY_OVERRIDES[d.id];
+  return ov && Array.isArray(ov.items) ? ov.items : d.items;
+}
 function checkableItems() {
   const list = [];
-  DAYS.forEach(d => d.items.forEach((it, idx) => { if (it.links && it.links.length) list.push(itemId(d.id, idx)); }));
+  DAYS.forEach(d => dayItems(d).forEach((it, idx) => { if (it.links && it.links.length) list.push(itemId(d.id, idx)); }));
   return list;
 }
 function checkedCount(rec) { return rec && rec.checkedBy ? Object.keys(rec.checkedBy).length : 0; }
@@ -447,11 +459,12 @@ const SHOW_ALL_PIPS = false;
 function renderDayList() {
   const wrap = $('dayList');
   wrap.innerHTML = DAYS.map(d => {
-    const linkedIdx = d.items.map((it, idx) => it.links && it.links.length ? idx : -1).filter(i => i >= 0);
+    const items = dayItems(d);
+    const linkedIdx = items.map((it, idx) => it.links && it.links.length ? idx : -1).filter(i => i >= 0);
     const done = linkedIdx.filter(idx => checkedCount(CHECKINS[itemId(d.id, idx)]) > 0).length;
     const total = linkedIdx.length;
 
-    const itemsHtml = d.items.map((it, idx) => {
+    const itemsHtml = editingDay === d.id ? '' : items.map((it, idx) => {
       const id = itemId(d.id, idx);
       const hasLinks = it.links && it.links.length;
       const rec = CHECKINS[id] || { checkedBy: {} };
@@ -523,7 +536,12 @@ function renderDayList() {
         <div class="chevron">▾</div>
       </div>
       <div class="exp-body">
-        <div class="route-list">${itemsHtml}</div>
+        ${editingDay === d.id ? dayEditorHtml(d) : `
+        <div class="edit-day-row">
+          ${DAY_OVERRIDES[d.id] ? '<span class="edit-day-meta">✏️ ' + esc(nameOf(DAY_OVERRIDES[d.id].updatedBy)) + ' 改過</span>' : ''}
+          <button type="button" class="edit-day-btn" data-edit-day="${esc(d.id)}">✏️ 編輯行程</button>
+        </div>
+        <div class="route-list">${itemsHtml}</div>`}
         <div class="journal-box">
           <h4>💌 今日心得</h4>
           ${journalHtml}
@@ -551,6 +569,7 @@ function renderDayList() {
     </div>`;
   }).join('');
   attachDayListeners();
+  attachDayEditorListeners();
 }
 
 function stampColor(emoji) {
@@ -592,6 +611,102 @@ function renderRegions() {
       renderRegions();
     });
   });
+}
+
+/* ===================== 行程編輯器 ===================== */
+function linkFieldOf(it) {
+  if (!it.links || !it.links.length) return '-';
+  return it.links[0].u || '-';
+}
+function dayEditorHtml(d) {
+  const rows = editorItems.map((it, i) => `
+    <div class="de-row">
+      <div class="de-line1">
+        <input type="text" class="de-time" data-de="time" data-i="${i}" placeholder="時間" value="${esc(it.time || '')}">
+        <input type="text" class="de-title" data-de="title" data-i="${i}" placeholder="標題（必填）" value="${esc(it.title || '')}" maxlength="60">
+      </div>
+      <div class="de-line2">
+        <button type="button" class="de-tog ${(it.badge || []).includes('fav') ? 'on' : ''}" data-de-badge="fav" data-i="${i}">💘</button>
+        <button type="button" class="de-tog ${(it.badge || []).includes('res') ? 'on' : ''}" data-de-badge="res" data-i="${i}">✅</button>
+        <span class="de-spacer"></span>
+        <button type="button" class="de-mv" data-de-up="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" class="de-mv" data-de-down="${i}" ${i === editorItems.length - 1 ? 'disabled' : ''}>↓</button>
+        <button type="button" class="de-del" data-de-del="${i}">✕</button>
+      </div>
+      <input type="text" class="de-note" data-de="note" data-i="${i}" placeholder="備註（選填）" value="${esc(it.note || '')}" maxlength="120">
+      <input type="text" class="de-link" data-de="link" data-i="${i}" placeholder="地圖連結：留空＝自動搜尋標題，－＝不要連結" value="${esc(it._link ?? linkFieldOf(it))}">
+    </div>`).join('');
+  return `
+    <div class="day-editor">
+      <div class="de-hint">✏️ 編輯 ${esc(d.short)} 的行程（全團共用，儲存後大家都會看到）</div>
+      ${rows}
+      <button type="button" class="de-add" id="deAddBtn">＋ 新增一項</button>
+      <div class="de-actions">
+        <button type="button" class="de-save" id="deSaveBtn">儲存</button>
+        <button type="button" class="de-cancel" id="deCancelBtn">取消</button>
+      </div>
+    </div>`;
+}
+function openDayEditor(dayId) {
+  const d = DAYS.find(x => x.id === dayId);
+  if (!d) return;
+  editingDay = dayId;
+  editorItems = dayItems(d).map(it => ({ ...it, badge: [...(it.badge || [])], _link: linkFieldOf(it) }));
+  openDays.add(dayId);
+  renderDayList();
+}
+function closeDayEditor() {
+  editingDay = null; editorItems = [];
+  renderDayList();
+  flushRenders();   // 編輯期間暫存的外部更新補畫
+}
+function saveDayEditor() {
+  const items = [];
+  for (const it of editorItems) {
+    const title = (it.title || '').trim().slice(0, 60);
+    if (!title) continue;
+    const out = { title };
+    const time = (it.time || '').trim().slice(0, 30); if (time) out.time = time;
+    const note = (it.note || '').trim().slice(0, 120); if (note) out.note = note;
+    if (it.badge && it.badge.length) out.badge = it.badge;
+    const lk = (it._link ?? '').trim();
+    if (lk === '-') { /* 不要連結 */ }
+    else if (/^https?:\/\//i.test(lk)) out.links = [{ l: title, u: lk }];
+    else if (lk === '') out.links = [{ l: title, u: 'https://www.google.com/maps/search/' + encodeURIComponent(title) }];
+    items.push(out);
+  }
+  if (!items.length) { toast('至少留一項行程'); return; }
+  if (items.length > 40) { toast('一天最多 40 項'); return; }
+  const dayId = editingDay;
+  fire(setDoc(doc(db, 'itinerary_days', dayId), { items, updatedBy: ME.uid, ts: Date.now() }));
+  DAY_OVERRIDES[dayId] = { items, updatedBy: ME.uid, ts: Date.now() };   // 樂觀更新
+  closeDayEditor();
+}
+function attachDayEditorListeners() {
+  const on = (sel, ev, fn) => document.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
+  on('[data-edit-day]', 'click', (el, e) => { e.stopPropagation(); openDayEditor(el.dataset.editDay); });
+  if (editingDay === null) return;
+  on('.day-editor input[data-de]', 'input', (el) => {
+    const it = editorItems[Number(el.dataset.i)]; if (!it) return;
+    const f = el.dataset.de;
+    if (f === 'link') it._link = el.value; else it[f] = el.value;
+  });
+  on('.day-editor input, .day-editor button', 'click', (el, e) => e.stopPropagation());
+  on('[data-de-badge]', 'click', (el) => {
+    const it = editorItems[Number(el.dataset.i)]; if (!it) return;
+    const b = el.dataset.deBadge;
+    it.badge = (it.badge || []).includes(b) ? it.badge.filter(x => x !== b) : [...(it.badge || []), b];
+    renderDayList();
+  });
+  on('[data-de-up]', 'click', (el) => { const i = Number(el.dataset.deUp); if (i > 0) { [editorItems[i - 1], editorItems[i]] = [editorItems[i], editorItems[i - 1]]; renderDayList(); } });
+  on('[data-de-down]', 'click', (el) => { const i = Number(el.dataset.deDown); if (i < editorItems.length - 1) { [editorItems[i + 1], editorItems[i]] = [editorItems[i], editorItems[i + 1]]; renderDayList(); } });
+  on('[data-de-del]', 'click', (el) => { editorItems.splice(Number(el.dataset.deDel), 1); renderDayList(); });
+  const add = document.getElementById('deAddBtn');
+  if (add) add.addEventListener('click', (e) => { e.stopPropagation(); editorItems.push({ title: '', badge: [], _link: '' }); renderDayList(); });
+  const sv = document.getElementById('deSaveBtn');
+  if (sv) sv.addEventListener('click', (e) => { e.stopPropagation(); saveDayEditor(); });
+  const cc = document.getElementById('deCancelBtn');
+  if (cc) cc.addEventListener('click', (e) => { e.stopPropagation(); if (confirm('放棄這次修改？')) closeDayEditor(); });
 }
 
 /* ---- 行程頁事件：全部只寫自己那一格 / 自己那一筆 ---- */

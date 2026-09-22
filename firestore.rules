@@ -171,6 +171,17 @@ service cloud.firestore {
         && tsOk(request.resource.data.ts);
     }
 
+    // ---------- 行程覆蓋：團員可編輯每一天的項目 ----------
+    match /itinerary_days/{dayId} {
+      allow read: if member();
+      allow write: if member()
+        && request.resource.data.keys().hasOnly(['items', 'updatedBy', 'ts'])
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 40
+        && request.resource.data.updatedBy == uid()
+        && tsOk(request.resource.data.ts);
+    }
+
     // ---------- 貼圖庫（全團共用；匯入或團員上傳）----------
     match /stickers/{id} {
       allow read: if member();
