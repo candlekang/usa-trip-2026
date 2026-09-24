@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-17';
+const BUILD = 'v2-dev-18';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -358,6 +358,7 @@ function enterApp() {
   $('personalAddBtn').addEventListener('click', addPersonalItem);
   $('personalInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPersonalItem(); });
   $('logoutBtn1').addEventListener('click', logout);
+  fetchFx(); fetchWeather();
   setInterval(renderTopbar, 60000);
 }
 
@@ -386,6 +387,83 @@ function ensurePhotoListener(dayId) {
     PHOTOS[dayId] = list;
     requestRender(renderDayList, renderRecap);
   }));
+}
+
+/* ===================== 外部資料：匯率 / 天氣（皆 keyless、可離線退快取） ===================== */
+let FX = null;        // {rate, date}  USD→TWD 當日匯率
+let WEATHER = {};     // dayId -> {cond, hi, lo, live:true}
+
+async function fetchFx() {
+  try { const c = JSON.parse(localStorage.getItem('fx_v1') || 'null'); if (c) { FX = c; applyFxToForm(); if (Date.now() - c.ts < 12 * 3600e3) return; } } catch (e) { }
+  try {
+    const r = await (await fetch('https://open.er-api.com/v6/latest/USD')).json();
+    const twd = r && r.rates && r.rates.TWD;
+    if (!twd) return;
+    FX = { rate: Math.round(twd * 100) / 100, date: new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' }), ts: Date.now() };
+    try { localStorage.setItem('fx_v1', JSON.stringify(FX)); } catch (e) { }
+    applyFxToForm();
+  } catch (e) { console.warn('fx fetch failed', e); }
+}
+function applyFxToForm() {
+  if (!FX) return;
+  const inp = $('expRate');
+  if (inp && !inp.value && document.activeElement !== inp) inp.value = FX.rate;
+  const h = $('fxHint');
+  if (h) h.textContent = '今日匯率 ' + FX.rate + '（' + FX.date + '）已自動帶入，可手改';
+}
+
+const CITY_COORDS = [
+  [/canyon|大峽谷/i, { la: 36.05, lo: -112.14, tz: 'America/Phoenix' }],
+  [/page|佩吉/i, { la: 36.91, lo: -111.46, tz: 'America/Phoenix' }],
+  [/vegas|拉斯/i, { la: 36.17, lo: -115.14, tz: 'America/Los_Angeles' }],
+  [/anaheim|安納/i, { la: 33.83, lo: -117.91, tz: 'America/Los_Angeles' }],
+  [/phoenix|回程|mesa|鳳凰/i, { la: 33.42, lo: -111.83, tz: 'America/Phoenix' }],
+  [/la|抵達/i, { la: 34.05, lo: -118.24, tz: 'America/Los_Angeles' }],
+];
+function dayCoord(d) {
+  let c = d.city || '';
+  if (c.includes('→')) c = c.split('→').pop();
+  for (const [re, co] of CITY_COORDS) if (re.test(c)) return co;
+  return null;
+}
+const WMO_EMOJI = (c) =>
+  c === 0 ? '☀️' : c <= 2 ? '🌤️' : c === 3 ? '☁️' : c <= 48 ? '🌫️' : c <= 57 ? '🌦️'
+  : c <= 67 ? '🌧️' : c <= 77 ? '🌨️' : c <= 82 ? '🌧️' : c <= 86 ? '🌨️' : '⛈️';
+const laDate = (dt) => dt.toLocaleDateString('sv', { timeZone: 'America/Los_Angeles' });
+
+async function fetchWeather() {
+  try { const c = JSON.parse(localStorage.getItem('wx_v1') || 'null'); if (c) { WEATHER = c.data || {}; requestRender(renderDayList); if (Date.now() - c.ts < 6 * 3600e3) return; } } catch (e) { }
+  if (!TRIP_START || !DAYS.length) return;
+  const meta = DAYS.map((d, i) => ({ id: d.id, date: laDate(new Date(TRIP_START.getTime() + i * 86400000)), coord: dayCoord(d) })).filter(m => m.coord);
+  const coords = [...new Map(meta.map(m => [m.coord.la + ',' + m.coord.lo, m.coord])).values()];
+  const today = laDate(new Date());
+  const start = meta[0].date > today ? meta[0].date : today;
+  const endCap = laDate(new Date(Date.now() + 15 * 86400000));
+  const end = meta[meta.length - 1].date < endCap ? meta[meta.length - 1].date : endCap;
+  if (start > end) return;
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast'
+      + '?latitude=' + coords.map(c => c.la).join(',') + '&longitude=' + coords.map(c => c.lo).join(',')
+      + '&timezone=' + coords.map(c => encodeURIComponent(c.tz)).join(',')
+      + '&daily=weather_code,temperature_2m_max,temperature_2m_min'
+      + '&start_date=' + start + '&end_date=' + end;
+    let res = await (await fetch(url)).json();
+    if (!Array.isArray(res)) res = [res];
+    const byCoord = new Map(coords.map((c, i) => [c.la + ',' + c.lo, res[i] && res[i].daily]));
+    const wx = {};
+    meta.forEach(m => {
+      const daily = byCoord.get(m.coord.la + ',' + m.coord.lo);
+      if (!daily) return;
+      const i = daily.time.indexOf(m.date);
+      if (i < 0) return;
+      wx[m.id] = { cond: WMO_EMOJI(daily.weather_code[i]), hi: Math.round(daily.temperature_2m_max[i]), lo: Math.round(daily.temperature_2m_min[i]), live: true };
+    });
+    if (Object.keys(wx).length) {
+      WEATHER = wx;
+      try { localStorage.setItem('wx_v1', JSON.stringify({ ts: Date.now(), data: wx })); } catch (e) { }
+      requestRender(renderDayList);
+    }
+  } catch (e) { console.warn('weather fetch failed', e); }
 }
 
 /* ===================== RENDER：TOPBAR ===================== */
@@ -531,7 +609,7 @@ function renderDayList() {
         <div class="stamp" style="background:${stampColor(d.emoji)}">${dayArt(d.id)}</div>
         <div class="exp-head-info">
           <div class="dline1">${esc(d.short)}（${esc(d.wd)}） <span class="city-tag">${esc(d.city)}</span></div>
-          <div class="dline2">${esc(d.cond)} ${esc(d.hi)}°/${esc(d.lo)}°${d.wnote ? ' · ' + esc(d.wnote) : ''} <span class="mini-progress">· ${done}/${total} 完成</span></div>
+          <div class="dline2">${(() => { const w = WEATHER[d.id] || d; return esc(w.cond) + ' ' + esc(w.hi) + '°/' + esc(w.lo) + '°'; })()}${d.wnote ? ' · ' + esc(d.wnote) : ''} <span class="mini-progress">· ${done}/${total} 完成</span></div>
         </div>
         <div class="chevron">▾</div>
       </div>
@@ -1062,8 +1140,9 @@ function renderExpenseForm() {
       </select>
     </div>
     <div class="exp-form-row" id="expRateRow" style="${currency === 'USD' ? '' : 'display:none;'}">
-      <input type="number" id="expRate" placeholder="匯率（1 USD = ? NTD）" value="${editing && editing.rate ? esc(editing.rate) : (lastRate() || '')}" min="0" step="0.01">
+      <input type="number" id="expRate" placeholder="匯率（1 USD = ? NTD）" value="${editing && editing.rate ? esc(editing.rate) : (FX ? FX.rate : (lastRate() || ''))}" min="0" step="0.01">
     </div>
+    <div class="fx-hint" id="fxHint">${FX ? '今日匯率 ' + esc(FX.rate) + '（' + esc(FX.date) + '）已自動帶入，可手改' : ''}</div>
     <div class="exp-form-row">
       <select id="expPayer">${payerOptions}</select>
       <input type="text" id="expNote" placeholder="備註（可留空）" maxlength="60" value="${editing && editing.note ? esc(editing.note) : ''}">
