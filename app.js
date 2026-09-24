@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-18';
+const BUILD = 'v2-dev-19';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -488,6 +488,8 @@ function doneItemsCount(ids) { return ids.filter(id => checkedCount(CHECKINS[id]
 function renderTopbar() {
   if (!ME) return;
   $('hiChip').textContent = 'Hi, ' + nameOf(ME.uid) + ' 👋';
+  const tw = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  $('twChip').textContent = '🇹🇼 台灣 ' + tw;
   $('countdownChip').textContent = fmtCountdown();
   const ids = checkableItems(), total = ids.length, done = doneItemsCount(ids);
   const pct = total ? Math.round(done / total * 100) : 0;

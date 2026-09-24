@@ -96,6 +96,8 @@
   }
   #topbar .row1{display:flex;align-items:center;justify-content:space-between;gap:10px;}
   #topbar h2{font-size:15.5px;margin:0;font-weight:700;color:var(--ink);}
+  .chip-col{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:0 0 auto;}
+  .tw-chip{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--paper2);border:1px solid var(--line);padding:2px 8px;border-radius:999px;white-space:nowrap;}
   .hi-chip{font-size:12px;font-weight:700;color:var(--teal);background:var(--teal-tint);padding:4px 10px;border-radius:999px;white-space:nowrap;}
   .count-chip{font-size:12px;font-weight:700;color:var(--mustard);background:var(--mustard-tint);padding:4px 10px;border-radius:999px;white-space:nowrap;}
   .progress-wrap{margin-top:10px;}
@@ -476,7 +478,7 @@
     <div id="topbar">
       <div class="row1">
         <h2>一男大戰六女 美國行 🇺🇸</h2>
-        <span class="hi-chip" id="hiChip">Hi!</span>
+        <span class="chip-col"><span class="hi-chip" id="hiChip">Hi!</span><span class="tw-chip" id="twChip"></span></span>
       </div>
       <div class="progress-wrap">
         <div class="progress-label"><span id="progressText">全團行程完成度</span><span id="countdownChip" class="count-chip"></span></div>
