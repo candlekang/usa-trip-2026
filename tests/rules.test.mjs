@@ -18,6 +18,7 @@ const PROJECT = 'ustrip2026-rules-test';
 const ALICE = { uid: 'alice-uid', email: 'alice@example.com' };
 const BOB   = { uid: 'bob-uid',   email: 'bob@example.com' };
 const EVE   = { uid: 'eve-uid',   email: 'eve@evil.example' }; // 不在白名單
+const VIC   = { uid: 'vic-uid',   email: 'vic@example.com' };  // 白名單但 role=viewer（旁觀者）
 
 let env;
 
@@ -45,6 +46,7 @@ beforeEach(async () => {
     const db = c.firestore();
     await setDoc(doc(db, 'allow', ALICE.email), {});
     await setDoc(doc(db, 'allow', BOB.email), {});
+    await setDoc(doc(db, 'allow', VIC.email), { role: 'viewer' });
     await setDoc(doc(db, 'config', 'itinerary'), { days: [{ id: 'd1' }] });
     await setDoc(doc(db, 'members', ALICE.uid), { name: 'Alice', avatar: null, joinedAt: 1 });
   });
@@ -184,6 +186,21 @@ test('分帳：形狀檢查、只有建立者能改刪、ts 不可改', async ()
   await assertFails(setDoc(doc(alice, 'expenses', 'e12'), { ...base, date: 123 }));                // 型別錯
   await assertSucceeds(updateDoc(doc(alice, 'expenses', 'e1'), { amount: 50, note: '含小費' }));
   await assertSucceeds(deleteDoc(doc(alice, 'expenses', 'e1')));
+});
+
+// ---------- 旁觀者 ----------
+test('viewer：看得到一切，但 expenses 完全不能寫；其他區不受限', async () => {
+  const vic = ctx(VIC), alice = ctx(ALICE);
+  const base = { desc: '油錢', amount: 45, currency: 'USD', rate: 32, payer: VIC.uid, note: null,
+                 participants: [VIC.uid], receipt: null, by: VIC.uid, ts: 1, date: null, splits: null };
+  await assertSucceeds(getDoc(doc(vic, 'config', 'itinerary')));
+  await assertSucceeds(getDocs(collection(vic, 'expenses')));
+  await assertFails(setDoc(doc(vic, 'expenses', 'v1'), base));                       // 不能新增
+  await assertSucceeds(setDoc(doc(alice, 'expenses', 'a1'), { ...base, payer: ALICE.uid, participants: [ALICE.uid], by: ALICE.uid }));
+  await assertFails(updateDoc(doc(vic, 'expenses', 'a1'), { amount: 1 }));           // 不能改
+  await assertFails(deleteDoc(doc(vic, 'expenses', 'a1')));                          // 不能刪
+  await assertSucceeds(setDoc(doc(vic, 'board', 'vb1'), { by: VIC.uid, text: '幹話照發', ts: 1, parentId: null })); // 幹話板不受限
+  await assertSucceeds(updateDoc(doc(alice, 'expenses', 'a1'), { amount: 50 }));     // 一般成員不受影響
 });
 
 // ---------- 共用備註 ----------

@@ -44,6 +44,10 @@ service cloud.firestore {
     function tsOk(t) {
       return t is number;
     }
+    // 白名單文件可標 role: 'viewer'（旁觀者）——分帳唯讀
+    function notViewer() {
+      return get(/databases/$(db)/documents/allow/$(email())).data.get('role', 'member') != 'viewer';
+    }
 
     // ---------- 白名單：前端完全不可讀寫 ----------
     match /allow/{emailId} {
@@ -156,11 +160,11 @@ service cloud.firestore {
     }
     match /expenses/{id} {
       allow read: if member();
-      allow create: if member() && isOwner(request.resource.data) && expenseShapeOk(request.resource.data);
-      allow update: if member() && isOwner(resource.data) && isOwner(request.resource.data)
+      allow create: if member() && notViewer() && isOwner(request.resource.data) && expenseShapeOk(request.resource.data);
+      allow update: if member() && notViewer() && isOwner(resource.data) && isOwner(request.resource.data)
         && expenseShapeOk(request.resource.data)
         && request.resource.data.ts == resource.data.ts;
-      allow delete: if member() && isOwner(resource.data);
+      allow delete: if member() && notViewer() && isOwner(resource.data);
     }
 
     // ---------- 共用備註（重要資訊頁）----------

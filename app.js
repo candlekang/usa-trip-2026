@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-21';
+const BUILD = 'v2-dev-22';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -76,6 +76,7 @@ let PERSONAL = [];        // localStorage（個人，不同步）
 let editingExpenseId = null;
 let expenseParticipants = new Set();
 let pendingReceipt = null;
+let VIEWERS = { uids: [], emails: [] };   // config/viewers：旁觀者（分帳唯讀、不入分攤）
 let expenseSplitMode = 'equal';   // 'equal' | 'custom'
 let expenseSplits = {};           // uid -> 輸入中的金額字串（自訂分攤）
 let pendingAvatar = null;
@@ -94,6 +95,10 @@ function itemId(dayId, idx) { return dayId + '-i' + idx; }
 function newId(col) { return doc(collection(db, col)).id; }
 function nameOf(uid) { const m = MEMBERS[uid]; return m ? m.name : '（已離開）'; }
 function memberUids() { return Object.keys(MEMBERS).sort((a, b) => (MEMBERS[a].joinedAt || 0) - (MEMBERS[b].joinedAt || 0)); }
+function isViewerUid(u) { return (VIEWERS.uids || []).includes(u); }
+function amIViewer() { return !!ME && (isViewerUid(ME.uid) || (VIEWERS.emails || []).includes((ME.email || '').toLowerCase())); }
+/* 分帳相關名單一律用這個：排除旁觀者 */
+function shareUids() { return memberUids().filter(u => !isViewerUid(u)); }
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600);
@@ -296,7 +301,7 @@ function enterApp() {
     const prev = JSON.stringify(Object.keys(MEMBERS).sort());
     MEMBERS = {}; s.forEach(d => { MEMBERS[d.id] = d.data(); });
     const changed = prev !== JSON.stringify(Object.keys(MEMBERS).sort());
-    if (changed && !editingExpenseId) expenseParticipants = new Set(memberUids());
+    if (changed && !editingExpenseId) expenseParticipants = new Set(shareUids());
     requestRender(renderTopbar, renderDayList, renderMembers, renderExpenseList, renderSettlement, renderRecap);
     if (changed) requestRender(renderExpenseForm);
     if (ME && !MEMBERS[ME.uid] && s.metadata.fromCache === false) { /* 自己退出了 */ logout(); }
@@ -326,6 +331,11 @@ function enterApp() {
   unsubs.push(onSnapshot(collection(db, 'notes'), s => {
     NOTES = {}; s.forEach(d => { NOTES[d.id] = d.data().text || ''; });
     requestRender(renderInfo);
+  }));
+  unsubs.push(onSnapshot(doc(db, 'config', 'viewers'), s => {
+    VIEWERS = s.exists() ? { uids: s.data().uids || [], emails: (s.data().emails || []).map(e => String(e).toLowerCase()) } : { uids: [], emails: [] };
+    if (!editingExpenseId) expenseParticipants = new Set(shareUids());
+    requestRender(renderExpenseForm, renderExpenseList, renderSettlement);
   }));
   unsubs.push(onSnapshot(collection(db, 'itinerary_days'), s => {
     DAY_OVERRIDES = {}; s.forEach(d => { DAY_OVERRIDES[d.id] = d.data(); });
@@ -1060,10 +1070,10 @@ function expWhenLabel(exp) {
 }
 function computeSettlement() {
   const net = {};
-  memberUids().forEach(u => { net[u] = 0; });
+  shareUids().forEach(u => { net[u] = 0; });
   EXPENSES.forEach(exp => {
     const total = ntdOf(exp);
-    const parts = exp.participants && exp.participants.length ? exp.participants : memberUids();
+    const parts = exp.participants && exp.participants.length ? exp.participants : shareUids();
     if (!parts.length) return;
     net[exp.payer] = (net[exp.payer] || 0) + total;
     const fx = exp.currency === 'USD' ? (exp.rate || 1) : 1;
@@ -1111,7 +1121,7 @@ function renderExpenseList() {
   wrap.innerHTML = EXPENSES.slice().sort((a, b) => expDateOf(b).localeCompare(expDateOf(a)) || b.ts - a.ts).map(exp => {
     const ntd = ntdOf(exp);
     const amtLabel = exp.currency === 'USD' ? ('US$ ' + exp.amount + ' ≈ NT$ ' + ntd) : ('NT$ ' + exp.amount);
-    const parts = exp.participants && exp.participants.length ? exp.participants : memberUids();
+    const parts = exp.participants && exp.participants.length ? exp.participants : shareUids();
     const mine = exp.by === ME.uid;
     return `
     <div class="expense-row">
@@ -1148,7 +1158,8 @@ function renderExpenseForm() {
   const editing = editingExpenseId ? EXPENSES.find(x => x.id === editingExpenseId) : null;
   const currency = editing ? editing.currency : 'USD';
   const wrap = $('expenseForm');
-  const uids = memberUids();
+  if (amIViewer()) { wrap.innerHTML = '<p class="viewer-note">👀 你是旁觀模式：分帳只能看，不能新增或修改。</p>'; return; }
+  const uids = shareUids();
   const memberChips = uids.map(u => '<button type="button" class="exp-chip ' + (expenseParticipants.has(u) ? 'on' : '') + '" data-exp-chip="' + esc(u) + '">' + esc(nameOf(u)) + '</button>').join('');
   const payerOptions = uids.map(u => {
     const sel = editing ? (editing.payer === u) : (u === ME.uid);
@@ -1219,7 +1230,7 @@ function renderExpenseForm() {
   if (clearBtn0) clearBtn0.addEventListener('click', () => { pendingReceipt = null; updateReceiptUI(); });
   $('expSubmitBtn').addEventListener('click', submitExpense);
   const cancelBtn = $('expCancelBtn');
-  if (cancelBtn) cancelBtn.addEventListener('click', () => { editingExpenseId = null; pendingReceipt = null; expenseSplitMode = 'equal'; expenseSplits = {}; expenseParticipants = new Set(memberUids()); renderExpenseForm(); });
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { editingExpenseId = null; pendingReceipt = null; expenseSplitMode = 'equal'; expenseSplits = {}; expenseParticipants = new Set(shareUids()); renderExpenseForm(); });
 }
 /* 自訂分攤列：每個被選的人一格金額；refill=true 時把沒填過的人先均分帶入 */
 function renderSplitRows(refill) {
@@ -1309,7 +1320,7 @@ function submitExpense() {
   }
   editingExpenseId = null; pendingReceipt = null;
   expenseSplitMode = 'equal'; expenseSplits = {};
-  expenseParticipants = new Set(memberUids());
+  expenseParticipants = new Set(shareUids());
   document.activeElement && document.activeElement.blur();
   renderExpenseForm();
 }
