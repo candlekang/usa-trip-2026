@@ -141,7 +141,8 @@ service cloud.firestore {
 
     // ---------- 分帳 ----------
     function expenseShapeOk(d) {
-      return d.keys().hasOnly(['desc', 'amount', 'currency', 'rate', 'payer', 'note', 'participants', 'receipt', 'by', 'ts', 'date'])
+      return d.keys().hasOnly(['desc', 'amount', 'currency', 'rate', 'payer', 'note', 'participants', 'receipt', 'by', 'ts', 'date', 'splits'])
+        && (d.get('splits', null) == null || (d.splits is map && d.splits.keys().size() <= 20))
         && (d.get('date', null) == null || (d.date is string && d.date.matches('\\d{4}-\\d{2}-\\d{2}')))
         && strLen(d.desc, 40)
         && d.amount is number && d.amount > 0

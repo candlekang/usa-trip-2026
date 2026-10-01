@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-20';
+const BUILD = 'v2-dev-21';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -76,6 +76,8 @@ let PERSONAL = [];        // localStorage（個人，不同步）
 let editingExpenseId = null;
 let expenseParticipants = new Set();
 let pendingReceipt = null;
+let expenseSplitMode = 'equal';   // 'equal' | 'custom'
+let expenseSplits = {};           // uid -> 輸入中的金額字串（自訂分攤）
 let pendingAvatar = null;
 let openDays = new Set();
 let openRegions = new Set();
@@ -1045,6 +1047,7 @@ function renderMembers() {
 
 /* ===================== 分帳 ===================== */
 function ntdOf(exp) { return exp.currency === 'USD' ? Math.round(exp.amount * (exp.rate || 1)) : Math.round(exp.amount); }
+function cur(exp) { return exp.currency === 'USD' ? '$' : 'NT$'; }
 function todayLocal() { return new Date().toLocaleDateString('sv'); }
 function localDateOf(ts) { return new Date(ts).toLocaleDateString('sv'); }
 function expDateOf(exp) { return exp.date || localDateOf(exp.ts); }
@@ -1062,9 +1065,14 @@ function computeSettlement() {
     const total = ntdOf(exp);
     const parts = exp.participants && exp.participants.length ? exp.participants : memberUids();
     if (!parts.length) return;
-    const share = total / parts.length;
     net[exp.payer] = (net[exp.payer] || 0) + total;
-    parts.forEach(p => { net[p] = (net[p] || 0) - share; });
+    const fx = exp.currency === 'USD' ? (exp.rate || 1) : 1;
+    if (exp.splits) {
+      parts.forEach(p => { net[p] = (net[p] || 0) - (Number(exp.splits[p]) || 0) * fx; });
+    } else {
+      const share = total / parts.length;
+      parts.forEach(p => { net[p] = (net[p] || 0) - share; });
+    }
   });
   return net;
 }
@@ -1108,7 +1116,9 @@ function renderExpenseList() {
     return `
     <div class="expense-row">
       <div class="etop"><span class="etitle">${esc(exp.desc)}</span><span class="eamt">${esc(amtLabel)}</span></div>
-      <div class="emeta">🗓 ${esc(expWhenLabel(exp))} · ${esc(nameOf(exp.payer))} 先付的 · 分攤：${parts.map(u => esc(nameOf(u))).join('、')}${exp.note ? ' · ' + esc(exp.note) : ''}</div>
+      <div class="emeta">🗓 ${esc(expWhenLabel(exp))} · ${esc(nameOf(exp.payer))} 先付的 · 分攤：${exp.splits
+        ? parts.map(u => esc(nameOf(u)) + ' ' + esc(cur(exp)) + esc(Number(exp.splits[u]) || 0)).join('、')
+        : parts.map(u => esc(nameOf(u))).join('、')}${exp.note ? ' · ' + esc(exp.note) : ''}</div>
       ${exp.receipt ? '<div class="ereceipt"><button data-view-receipt="' + esc(exp.id) + '">🧾 查看收據</button></div>' : ''}
       ${mine ? '<div class="eactions"><button data-edit-expense="' + esc(exp.id) + '">✏️ 編輯</button><button data-del-expense="' + esc(exp.id) + '">🗑 刪除</button></div>' : ''}
     </div>`;
@@ -1118,6 +1128,8 @@ function renderExpenseList() {
     const exp = EXPENSES.find(x => x.id === editingExpenseId);
     expenseParticipants = new Set(exp && exp.participants && exp.participants.length ? exp.participants : memberUids());
     pendingReceipt = exp ? (exp.receipt || null) : null;
+    expenseSplitMode = exp && exp.splits ? 'custom' : 'equal';
+    expenseSplits = exp && exp.splits ? Object.fromEntries(Object.entries(exp.splits).map(([k, v]) => [k, String(v)])) : {};
     renderExpenseForm();
     $('expDesc').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }));
@@ -1163,8 +1175,14 @@ function renderExpenseForm() {
       <label class="exp-date-label">消費日期</label>
       <input type="date" id="expDate" value="${esc((editing && (editing.date || localDateOf(editing.ts))) || todayLocal())}">
     </div>
-    <div class="exp-hint">👉 點選要分攤的人：</div>
+    <div class="exp-hint">👉 點選要分攤的人：
+      <span class="split-mode">
+        <button type="button" class="sm-btn ${expenseSplitMode === 'equal' ? 'on' : ''}" data-split-mode="equal">均分</button>
+        <button type="button" class="sm-btn ${expenseSplitMode === 'custom' ? 'on' : ''}" data-split-mode="custom">自訂</button>
+      </span>
+    </div>
     <div class="exp-participants">${memberChips}</div>
+    <div id="splitRows"></div>
     <div class="receipt-row" id="expReceiptRow">
       <button type="button" class="receipt-btn" id="expReceiptBtn">${pendingReceipt ? '🧾 已附上收據（點擊更換）' : '🧾 上傳收據（選填）'}</button>
       <input type="file" accept="image/*" style="display:none" id="expReceiptInput">
@@ -1176,11 +1194,21 @@ function renderExpenseForm() {
     </div>`;
 
   $('expCurrency').addEventListener('change', (e) => { $('expRateRow').style.display = e.target.value === 'USD' ? '' : 'none'; });
+  $('expAmount').addEventListener('input', updateSplitDiff);
   document.querySelectorAll('[data-exp-chip]').forEach(chip => chip.addEventListener('click', () => {
     const u = chip.dataset.expChip;
     expenseParticipants.has(u) ? expenseParticipants.delete(u) : expenseParticipants.add(u);
     chip.classList.toggle('on');
+    if (expenseSplitMode === 'custom') renderSplitRows(true);
   }));
+  document.querySelectorAll('[data-split-mode]').forEach(btn => btn.addEventListener('click', () => {
+    const m = btn.dataset.splitMode;
+    if (m === expenseSplitMode) return;
+    expenseSplitMode = m;
+    document.querySelectorAll('[data-split-mode]').forEach(b => b.classList.toggle('on', b.dataset.splitMode === m));
+    renderSplitRows(m === 'custom');
+  }));
+  renderSplitRows(expenseSplitMode === 'custom');
   $('expReceiptBtn').addEventListener('click', () => $('expReceiptInput').click());
   $('expReceiptInput').addEventListener('change', async (e) => {
     const file = e.target.files[0]; if (!file) return; e.target.value = '';
@@ -1191,7 +1219,46 @@ function renderExpenseForm() {
   if (clearBtn0) clearBtn0.addEventListener('click', () => { pendingReceipt = null; updateReceiptUI(); });
   $('expSubmitBtn').addEventListener('click', submitExpense);
   const cancelBtn = $('expCancelBtn');
-  if (cancelBtn) cancelBtn.addEventListener('click', () => { editingExpenseId = null; pendingReceipt = null; expenseParticipants = new Set(memberUids()); renderExpenseForm(); });
+  if (cancelBtn) cancelBtn.addEventListener('click', () => { editingExpenseId = null; pendingReceipt = null; expenseSplitMode = 'equal'; expenseSplits = {}; expenseParticipants = new Set(memberUids()); renderExpenseForm(); });
+}
+/* 自訂分攤列：每個被選的人一格金額；refill=true 時把沒填過的人先均分帶入 */
+function renderSplitRows(refill) {
+  const wrap = $('splitRows');
+  if (!wrap) return;
+  if (expenseSplitMode !== 'custom') { wrap.innerHTML = ''; return; }
+  const parts = [...expenseParticipants].filter(u => MEMBERS[u]);
+  const total = parseFloat($('expAmount') && $('expAmount').value) || 0;
+  if (refill && parts.length) {
+    const assigned = parts.filter(u => expenseSplits[u] !== undefined && expenseSplits[u] !== '');
+    if (!assigned.length && total > 0) {
+      const even = Math.round(total / parts.length * 100) / 100;
+      parts.forEach((u, i) => { expenseSplits[u] = i === parts.length - 1 ? Math.round((total - even * (parts.length - 1)) * 100) / 100 : even; });
+    }
+  }
+  wrap.innerHTML = parts.map(u => `
+    <div class="split-row">
+      <span class="split-name">${esc(nameOf(u))}</span>
+      <input type="number" min="0" step="0.01" data-split-amt="${esc(u)}" value="${expenseSplits[u] ?? ''}" placeholder="0">
+    </div>`).join('')
+    + '<div class="split-diff" id="splitDiff"></div>'
+    + (parts.length ? '<button type="button" class="split-even-btn" id="splitEvenBtn">重新均分帶入</button>' : '');
+  wrap.querySelectorAll('[data-split-amt]').forEach(inp => inp.addEventListener('input', () => {
+    expenseSplits[inp.dataset.splitAmt] = inp.value;
+    updateSplitDiff();
+  }));
+  const evenBtn = $('splitEvenBtn');
+  if (evenBtn) evenBtn.addEventListener('click', () => { expenseSplits = {}; renderSplitRows(true); updateSplitDiff(); });
+  updateSplitDiff();
+}
+function updateSplitDiff() {
+  const el = $('splitDiff');
+  if (!el) return;
+  const parts = [...expenseParticipants].filter(u => MEMBERS[u]);
+  const total = parseFloat($('expAmount') && $('expAmount').value) || 0;
+  const sum = parts.reduce((a, u) => a + (parseFloat(expenseSplits[u]) || 0), 0);
+  const diff = Math.round((total - sum) * 100) / 100;
+  el.textContent = `已分配 ${Math.round(sum * 100) / 100} / 總額 ${total}` + (Math.abs(diff) < 0.01 ? ' ✓' : `，還差 ${diff}`);
+  el.classList.toggle('ok', Math.abs(diff) < 0.01);
 }
 function lastRate() { const e = EXPENSES.filter(x => x.currency === 'USD' && x.rate).sort((a, b) => b.ts - a.ts)[0]; return e ? e.rate : ''; }
 function updateReceiptUI() {
@@ -1220,8 +1287,19 @@ function submitExpense() {
   if (!participants.length) { toast('至少要有一個人分攤'); return; }
   if (!payer || !MEMBERS[payer]) { toast('請選擇付款人'); return; }
 
+  let splits = null;
+  if (expenseSplitMode === 'custom') {
+    splits = {};
+    let sum = 0;
+    for (const u of participants) {
+      const v = parseFloat(expenseSplits[u]);
+      if (isNaN(v) || v < 0) { toast('自訂分攤：' + nameOf(u) + ' 的金額還沒填'); return; }
+      splits[u] = Math.round(v * 100) / 100; sum += splits[u];
+    }
+    if (Math.abs(sum - amount) > 0.01) { toast('自訂分攤加總 ' + Math.round(sum * 100) / 100 + ' 跟總額 ' + amount + ' 對不上'); return; }
+  }
   const dateVal = ($('expDate') && $('expDate').value) || null;
-  const data = { desc, amount, currency, rate, payer, note, participants, receipt: pendingReceipt, date: dateVal || todayLocal() };
+  const data = { desc, amount, currency, rate, payer, note, participants, receipt: pendingReceipt, date: dateVal || todayLocal(), splits };
   const existing = editingExpenseId ? EXPENSES.find(x => x.id === editingExpenseId) : null;
   if (editingExpenseId && existing) {
     fire(updateDoc(doc(db, 'expenses', editingExpenseId), data));
@@ -1230,6 +1308,7 @@ function submitExpense() {
     fire(setDoc(doc(db, 'expenses', newId('expenses')), { ...data, by: ME.uid, ts: Date.now() }));
   }
   editingExpenseId = null; pendingReceipt = null;
+  expenseSplitMode = 'equal'; expenseSplits = {};
   expenseParticipants = new Set(memberUids());
   document.activeElement && document.activeElement.blur();
   renderExpenseForm();
