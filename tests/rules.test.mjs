@@ -177,6 +177,9 @@ test('分帳：形狀檢查、只有建立者能改刪、ts 不可改', async ()
   await assertFails(deleteDoc(doc(bob, 'expenses', 'e1')));                                         // 他人刪
   await assertFails(updateDoc(doc(alice, 'expenses', 'e1'), { ts: 999 }));                          // 改時間
   await assertFails(updateDoc(doc(alice, 'expenses', 'e1'), { by: BOB.uid }));                      // 轉讓
+  await assertSucceeds(setDoc(doc(alice, 'expenses', 'e10'), { ...base, date: '2026-10-01' }));    // 指定消費日
+  await assertFails(setDoc(doc(alice, 'expenses', 'e11'), { ...base, date: '10/01' }));            // 格式錯
+  await assertFails(setDoc(doc(alice, 'expenses', 'e12'), { ...base, date: 123 }));                // 型別錯
   await assertSucceeds(updateDoc(doc(alice, 'expenses', 'e1'), { amount: 50, note: '含小費' }));
   await assertSucceeds(deleteDoc(doc(alice, 'expenses', 'e1')));
 });

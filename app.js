@@ -45,7 +45,7 @@ if (USE_EMU) {
     JSON.stringify({ sub: 'emu-' + email, email, email_verified: true, name: name || email.split('@')[0] })));
   window.__dbg = () => ({ pending: [...pendingRenders].map(f => f.name), typing: isTypingActive(), build: BUILD });
 }
-const BUILD = 'v2-dev-19';
+const BUILD = 'v2-dev-20';
 
 /* ===================== STATE ===================== */
 let ME = null;            // { uid, email }
@@ -1045,6 +1045,16 @@ function renderMembers() {
 
 /* ===================== 分帳 ===================== */
 function ntdOf(exp) { return exp.currency === 'USD' ? Math.round(exp.amount * (exp.rate || 1)) : Math.round(exp.amount); }
+function todayLocal() { return new Date().toLocaleDateString('sv'); }
+function localDateOf(ts) { return new Date(ts).toLocaleDateString('sv'); }
+function expDateOf(exp) { return exp.date || localDateOf(exp.ts); }
+/* 顯示：改過消費日就只顯示日期；沒改（= 記錄當下）附上時間 */
+function expWhenLabel(exp) {
+  const d = expDateOf(exp);
+  const md = Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10));
+  if (exp.date && exp.date !== localDateOf(exp.ts)) return md;
+  return md + ' ' + new Date(exp.ts).toTimeString().slice(0, 5);
+}
 function computeSettlement() {
   const net = {};
   memberUids().forEach(u => { net[u] = 0; });
@@ -1090,7 +1100,7 @@ function renderSettlement() {
 function renderExpenseList() {
   const wrap = $('expenseList');
   if (!EXPENSES.length) { wrap.innerHTML = ''; return; }
-  wrap.innerHTML = EXPENSES.slice().sort((a, b) => b.ts - a.ts).map(exp => {
+  wrap.innerHTML = EXPENSES.slice().sort((a, b) => expDateOf(b).localeCompare(expDateOf(a)) || b.ts - a.ts).map(exp => {
     const ntd = ntdOf(exp);
     const amtLabel = exp.currency === 'USD' ? ('US$ ' + exp.amount + ' ≈ NT$ ' + ntd) : ('NT$ ' + exp.amount);
     const parts = exp.participants && exp.participants.length ? exp.participants : memberUids();
@@ -1098,7 +1108,7 @@ function renderExpenseList() {
     return `
     <div class="expense-row">
       <div class="etop"><span class="etitle">${esc(exp.desc)}</span><span class="eamt">${esc(amtLabel)}</span></div>
-      <div class="emeta">${esc(nameOf(exp.payer))} 先付的 · 分攤：${parts.map(u => esc(nameOf(u))).join('、')}${exp.note ? ' · ' + esc(exp.note) : ''}</div>
+      <div class="emeta">🗓 ${esc(expWhenLabel(exp))} · ${esc(nameOf(exp.payer))} 先付的 · 分攤：${parts.map(u => esc(nameOf(u))).join('、')}${exp.note ? ' · ' + esc(exp.note) : ''}</div>
       ${exp.receipt ? '<div class="ereceipt"><button data-view-receipt="' + esc(exp.id) + '">🧾 查看收據</button></div>' : ''}
       ${mine ? '<div class="eactions"><button data-edit-expense="' + esc(exp.id) + '">✏️ 編輯</button><button data-del-expense="' + esc(exp.id) + '">🗑 刪除</button></div>' : ''}
     </div>`;
@@ -1148,6 +1158,10 @@ function renderExpenseForm() {
     <div class="exp-form-row">
       <select id="expPayer">${payerOptions}</select>
       <input type="text" id="expNote" placeholder="備註（可留空）" maxlength="60" value="${editing && editing.note ? esc(editing.note) : ''}">
+    </div>
+    <div class="exp-form-row exp-date-row">
+      <label class="exp-date-label">消費日期</label>
+      <input type="date" id="expDate" value="${esc((editing && (editing.date || localDateOf(editing.ts))) || todayLocal())}">
     </div>
     <div class="exp-hint">👉 點選要分攤的人：</div>
     <div class="exp-participants">${memberChips}</div>
@@ -1206,7 +1220,8 @@ function submitExpense() {
   if (!participants.length) { toast('至少要有一個人分攤'); return; }
   if (!payer || !MEMBERS[payer]) { toast('請選擇付款人'); return; }
 
-  const data = { desc, amount, currency, rate, payer, note, participants, receipt: pendingReceipt };
+  const dateVal = ($('expDate') && $('expDate').value) || null;
+  const data = { desc, amount, currency, rate, payer, note, participants, receipt: pendingReceipt, date: dateVal || todayLocal() };
   const existing = editingExpenseId ? EXPENSES.find(x => x.id === editingExpenseId) : null;
   if (editingExpenseId && existing) {
     fire(updateDoc(doc(db, 'expenses', editingExpenseId), data));
